@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\TSServer_CSharp\TSNet\1_TSNet.csproj" />
+    <ProjectReference Include="..\..\TSServer_CSharp\TSUtil\0_TSUtil.csproj" />
+  </ItemGroup>
+
+</Project>
