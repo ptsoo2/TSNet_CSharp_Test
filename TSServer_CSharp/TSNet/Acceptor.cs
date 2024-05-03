@@ -8,8 +8,7 @@ namespace TSNet
 	{
 		public bool						isValidSocket => socket_ is not null;
 
-		public static uint				acceptCounter;
-		public static uint				totalAcceptCounter;
+		public static CPerformanceMeasurer<ThreadType.Multi> performanceMeasurer = new();
 
 		protected Socket				socket_;
 		protected IPEndPoint			ipEndPoint_;
@@ -73,8 +72,7 @@ namespace TSNet
 			{
 				Socket acceptSocket = socket_.Accept();
 				// Console.WriteLine($"accepted socket({socket.Handle.ToString()})");
-				Interlocked.Increment(ref acceptCounter);
-				Interlocked.Increment(ref totalAcceptCounter);
+				performanceMeasurer.incrementCount();
 
 				// ptsoo todo - 걍 바로 끊는다 -_-
 				acceptSocket.Close();
@@ -114,8 +112,7 @@ namespace TSNet
 
 		protected void _onCompleteAsyncAccept()
 		{
-			Interlocked.Increment(ref acceptCounter);
-			Interlocked.Increment(ref totalAcceptCounter);
+			performanceMeasurer.incrementCount();
 
 			Socket? acceptSocket = acceptEventArgs_.AcceptSocket;
 			acceptSocket?.Close();  // ptsoo todo - 일단은 테스트를 위해서 걍 바로 끊는다 -_-
@@ -132,7 +129,7 @@ namespace TSNet
 				*/
 				acceptEventArgs_.AcceptSocket = null;
 			}
-			ThreadUtil.printWithThreadInfo("end accept");
+			// ThreadUtil.printWithThreadInfo("end accept");
 
 			bool isImmediatelyComplete = socket_.AcceptAsync(acceptEventArgs_) == false;
 			if (isImmediatelyComplete == true)

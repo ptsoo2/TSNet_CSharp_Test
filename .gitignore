@@ -1,0 +1,5 @@
+*.v2
+/TSClient/.vs/TSClient/FileContentIndex/*.vsidx
+bin
+obj
+.vs

@@ -4,21 +4,6 @@ using TSUtil;
 
 namespace TSNetTest
 {
-	public abstract class ICounter
-	{
-		protected ulong counter_ = 0;
-
-		public abstract void increase(ulong val);
-	}
-
-	public class CInterlockedCounter : ICounter
-	{
-		public override void increase(ulong val)
-		{
-			
-		}
-	}
-
 	internal class Program
 	{
 		static void Main(string[] args)
@@ -53,21 +38,16 @@ namespace TSNetTest
 				() =>
 				{
 					ThreadUtil.setThreadName("Measurer");
-					Stopwatch watch = new();
 
 					ulong loopCount = 0;
 
-					watch.Start();
 					while (true)
 					{
-						if (watch.ElapsedMilliseconds > 1000)
+						PerformanceProperties properties;
+						if (CAcceptor.performanceMeasurer.update(1000, out properties) == true)
 						{
-							uint counter = Interlocked.Exchange(ref CAcceptor.acceptCounter, 0);
-							ThreadUtil.printWithThreadInfo($"[{loopCount.ToString()}]Accepted socket per sec: {counter.ToString()} {CAcceptor.totalAcceptCounter}");
-
+							ThreadUtil.printWithThreadInfo($"[{loopCount.ToString()}]Accepted socket per sec: {properties.nowCount_.ToString()} {properties.totalCount_.ToString()}");
 							++loopCount;
-
-							watch.Restart();
 						}
 
 						Thread.Sleep(1);

@@ -8,13 +8,13 @@ namespace TSClient
 	{
 		static void Main(string[] args)
 		{
-			for (int i = 0; i < 3; ++i)
+			for (int i = 0; i < 10; ++i)
 			{
 				List<Socket> lstSocket = new List<Socket>();
 				Test.Bench(
 					() =>
 					{
-						for (int i = 0; i < 10; ++i)
+						for (int i = 0; i < 5000; ++i)
 						{
 							Socket socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 

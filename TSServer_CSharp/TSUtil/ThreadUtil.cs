@@ -1,17 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace TSUtil
 {
-	public enum ThreadType
-	{
-		Single = 0,
-		Multi,
-	}
-
     public class ThreadUtil
     {
 		public static void setThreadName(string threadName)

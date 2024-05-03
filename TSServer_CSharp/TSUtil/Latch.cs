@@ -1,17 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace TSUtil
 {
+	/// <summary>
+	/// counter 대기 용도
+	/// </summary>
 	public class Latch
 	{
 		protected readonly object mutex_ = new object();
 		protected int count_;
 
-		public Latch(int initializeCount)
+		public Latch(int initializeCount = 1)
 		{
 			if (initializeCount < 1)
 			{
