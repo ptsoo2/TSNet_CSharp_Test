@@ -48,6 +48,11 @@ namespace TSUtil
 				return count_;
 			}
 		}
+
+		public bool isEnd()
+		{
+			return count() < 1;
+		}
 	}
 
 }

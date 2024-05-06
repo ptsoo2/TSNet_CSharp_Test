@@ -1,163 +1,84 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Threading.Channels;
 using TSUtil;
 
 namespace TSNet
 {
-	public class CAcceptor : IDisposable
+	public class CAcceptor : CAcceptorBase
 	{
-		public bool						isValidSocket => socket_ is not null;
-
-		public static CPerformanceMeasurer<ThreadType.Multi> performanceMeasurer = new();
-
-		protected Socket				socket_;
-		protected IPEndPoint			ipEndPoint_;
-		protected int					backlog_ = int.MaxValue;
-
-		protected SocketAsyncEventArgs	acceptEventArgs_;
-
-		private bool					isDisposed_ = false;
-
 		public CAcceptor(string ip, int port, int backlog = int.MaxValue)
+			: base(ip, port, backlog)
 		{
-			// endpoint 생성
-			IPEndPoint? ipEndPoint = AddressHelper.makeEndPoint(ip, port);
-			if (ipEndPoint is null)
-				throw new Exception();
-
-			ipEndPoint_ = ipEndPoint;
-			backlog_ = backlog;
-
-			// eventArgs 생성
-			acceptEventArgs_ = new();
-			acceptEventArgs_.Completed += new EventHandler<SocketAsyncEventArgs>(
-				(object? sender, SocketAsyncEventArgs acceptEventArgs)
-					=> _onCompleteAsyncAccept()
-			);
-
-			// socket 생성
-			socket_ = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-			// ptsoo todo - 옵션으로 빼자
-			socket_.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-			socket_.Bind(ipEndPoint_);
 		}
 
-		~CAcceptor()
+		public override bool start()
 		{
-			Dispose(isManualDispose: false);
+			return base.start();
 		}
 
-		public bool startAsync()
+		protected override object? _generateIO()
 		{
-			if (isValidSocket is false)
-				return false;
-
-			socket_.Listen(backlog_);
-
-			// accept 시작
-			_asyncAccept();
-			return true;
+			ThreadUtil.printWithThreadInfo("_generateIO");
+			_generateIOInternalAsync().DoNothing();
+			return null;
 		}
 
-		public bool startSync()
+		protected async Task _generateIOInternalAsync()
 		{
-			if (isValidSocket is false)
-				throw new NullReferenceException("Not opened socket");
-
-			socket_.Listen(backlog_);
+			ArgumentNullException.ThrowIfNull(socket_);
 
 			try
 			{
-				Socket acceptSocket = socket_.Accept();
-				// Console.WriteLine($"accepted socket({socket.Handle.ToString()})");
-				performanceMeasurer.incrementCount();
+				// try~catch 가 있어야 잡힌다.
+				Socket? socket = await socket_.AcceptAsync().ConfigureAwait(false);
+				_onCompletionIO(socket);
+			}
+			catch (SocketException exception)
+			{
+				ThreadUtil.printWithThreadInfo($"SocketException!!(message: {exception.Message}, errorCode: {exception.ErrorCode.ToString()})");
 
-				// ptsoo todo - 걍 바로 끊는다 -_-
-				acceptSocket.Close();
+				var socketError = (SocketError)exception.ErrorCode;
+				if ((socketError == SocketError.NotConnected)
+					|| (socketError == SocketError.OperationAborted))
+				{
+					// 이미 종료되었기에 추가로 해줄 작업이 없다.
+					socket_ = null!;
+					_stop();
+					return;
+				}
+			}
+			catch (InvalidOperationException exception)
+			{
+				ThreadUtil.printWithThreadInfo($"InvalidOperationException: {exception.ToString()}");
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine(exception.ToString());
-			}
-
-			return true;
-		}
-
-		protected void _asyncAccept()
-		{
-			if (isValidSocket is false)
-				throw new NullReferenceException("Not opened socket");
-
-			bool isImmediatelyComplete = socket_.AcceptAsync(acceptEventArgs_) == false;
-			if (isImmediatelyComplete == true)
-			{
-				// 즉시 완료된 경우
-				_onCompleteAsyncAccept();
+				ThreadUtil.printWithThreadInfo($"Exception: {exception.ToString()}");
 			}
 		}
 
-		public void test()
+		protected override void _onCompletionIO(object? result)
 		{
-			Task.Run(
-				async () => 
-				{
-					Console.WriteLine("begin");
-					Socket socket = await socket_.AcceptAsync();
-					Console.WriteLine("after");
-				}
-			);
-		}
-
-		protected void _onCompleteAsyncAccept()
-		{
-			performanceMeasurer.incrementCount();
-
-			Socket? acceptSocket = acceptEventArgs_.AcceptSocket;
-			acceptSocket?.Close();  // ptsoo todo - 일단은 테스트를 위해서 걍 바로 끊는다 -_-
-
-			{
-				/*
-				// https://blog.naver.com/fish19/120104100937
-				// acceptEventArgs_ 를 재사용하기 위한 패턴이다.
-				// 내부적으로 AcceptAsync => Socket::GetOrCreateAcceptSocket => AcceptEx 의 절차로 진행 된다.
-				// AcceptEx 함수는 Proactor pattern 으로 클라이언트 소켓을 생성하여 미리 accept 를 걸게 된다.
-				// 클라이언트 소켓을 생성하는 함수는 Socket::GetOrCreateAcceptSocket 이고, acceptEventArgs_.AcceptSocket 를 인자로 전달 받는다.
-				// 인자로 전달받은 소켓이 유효하면 그대로 사용하도록 동작한다. 단, accept 에 사용할 소켓인데 이미 연결이 되어있는 상태라면 이치에 맞지 않으므로 throw 를 일으킨다.
-				// 따라서 null 로 만들어주어 내부적으로 새로 socket 을 생성하여 AcceptEx 를 올바르게 실행할 수 있도록 null 로 만들어 두어야 하는 것이다.
-				*/
-				acceptEventArgs_.AcceptSocket = null;
-			}
-			// ThreadUtil.printWithThreadInfo("end accept");
-
-			bool isImmediatelyComplete = socket_.AcceptAsync(acceptEventArgs_) == false;
-			if (isImmediatelyComplete == true)
-			{
-				// 즉시 완료된 경우 (ptsoo todo - stack overflow 생각해야겠지, 또한 여기서 socket 이 올바르리라는 보장이 있을까?)
-				_onCompleteAsyncAccept();
-			}
-		}
-
-		protected virtual void Dispose(bool isManualDispose)
-		{
-			if (isDisposed_ is true)
+			ThreadUtil.printWithThreadInfo("_onCompletionIO");
+			if (result is null)
 				return;
 
-			if (isManualDispose is true)
+			if (result is not Socket)
 			{
-				// TODO: 관리형 상태(관리형 개체)를 삭제합니다.
+				ThreadUtil.printWithThreadInfo("Not a socket type");
+				return;
 			}
 
-			socket_?.Close();
+			performanceMeasurer.incrementCount();
 
-			isDisposed_ = true;
-		}
+			Socket socket = (Socket)result;
 
-		public void Dispose()
-		{
-			Dispose(isManualDispose: true);
-			GC.SuppressFinalize(this);
+			// ptsoo todo - 임시로
+			socket.Shutdown(SocketShutdown.Both);
+
+			_generateIO();
 		}
 	}
 }

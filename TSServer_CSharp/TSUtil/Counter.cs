@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using ThreadType;
 
 namespace TSUtil
 {
@@ -15,7 +16,7 @@ namespace TSUtil
 	{
 		public T				value { get; set; }
 
-		public void				add(T addVal);
+		public void				addCount(T addVal);
 		public void				increment();
 		public void				decrement();
 		public void				zeroize();
@@ -31,7 +32,7 @@ namespace TSUtil
 		protected T				value_;
 		public abstract T		value { get; set; }
 
-		public abstract void	add(T addVal);
+		public abstract void	addCount(T addVal);
 		public abstract void	increment();
 		public abstract void	decrement();
 		public abstract void	zeroize();
@@ -40,9 +41,7 @@ namespace TSUtil
 	public class CCounter<T> : CCounterBase<T>
 		where T : unmanaged
 	{
-		public CCounter()
-		{ }
-		public CCounter(T initializeValue) : base(initializeValue)
+		public CCounter(T initializeValue = default) : base(initializeValue)
 		{ }
 
 		public override T value
@@ -51,7 +50,7 @@ namespace TSUtil
 			set { value_ = value; }
 		}
 
-		public override unsafe void add(T addVal)
+		public override unsafe void addCount(T addVal)
 		{
 			fixed (void* pValue = &value_)
 			{
@@ -63,6 +62,7 @@ namespace TSUtil
 				else if (value_ is uint)		Unsafe.AsRef<uint>(pValue) += Unsafe.As<T, uint>(ref addVal);
 				else if (value_ is long)		Unsafe.AsRef<long>(pValue) += Unsafe.As<T, long>(ref addVal);
 				else if (value_ is ulong)		Unsafe.AsRef<ulong>(pValue) += Unsafe.As<T, ulong>(ref addVal);
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -78,6 +78,7 @@ namespace TSUtil
 				else if (value_ is uint)		Unsafe.AsRef<uint>(pValue) += 1;
 				else if (value_ is long)		Unsafe.AsRef<long>(pValue) += 1;
 				else if (value_ is ulong)		Unsafe.AsRef<ulong>(pValue) += 1;
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -93,6 +94,7 @@ namespace TSUtil
 				else if (value_ is uint)		Unsafe.AsRef<uint>(pValue) -= 1;
 				else if (value_ is long)		Unsafe.AsRef<long>(pValue) -= 1;
 				else if (value_ is ulong)		Unsafe.AsRef<ulong>(pValue) -= 1;
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -105,9 +107,7 @@ namespace TSUtil
 	public class CSharedCounter<T> : CCounterBase<T> 
 		where T : unmanaged
 	{
-		public CSharedCounter()
-		{ }
-		public CSharedCounter(T initializeValue) : base(initializeValue)
+		public CSharedCounter(T initializeValue = default) : base(initializeValue)
 		{ }
 
 #pragma warning disable CS8500
@@ -116,8 +116,7 @@ namespace TSUtil
 			get
 			{
 				bool isSigned = false;
-				long a1 = 0;
-				ulong a2 = 0;
+				(long, ulong) pairNumber = (0, 0);
 
 				fixed (void* pValue = &value_)
 				{
@@ -125,15 +124,16 @@ namespace TSUtil
 						|| (value_ is short)
 						|| (value_ is int)
 						|| (value_ is long)
+						|| (value_ is bool)
 						;
 
-					if (isSigned == true)	a1 = Interlocked.Read(ref Unsafe.AsRef<long>(pValue));
-					else					a2 = Interlocked.Read(ref Unsafe.AsRef<ulong>(pValue));
+					if (isSigned == true)	pairNumber.Item1 = Interlocked.Read(ref Unsafe.AsRef<long>(pValue));
+					else					pairNumber.Item2 = Interlocked.Read(ref Unsafe.AsRef<ulong>(pValue));
 				}
 
 				return (isSigned == true)
-					? Unsafe.As<long, T>(ref a1)
-					: Unsafe.As<ulong, T>(ref a2);
+					? Unsafe.As<long, T>(ref pairNumber.Item1)
+					: Unsafe.As<ulong, T>(ref pairNumber.Item2);
 			}
 			set
 			{
@@ -147,11 +147,13 @@ namespace TSUtil
 					else if (value_ is uint)	Interlocked.Exchange(ref Unsafe.AsRef<uint>(pValue), Unsafe.As<T, uint>(ref value));
 					else if (value_ is long)	Interlocked.Exchange(ref Unsafe.AsRef<long>(pValue), Unsafe.As<T, long>(ref value));
 					else if (value_ is ulong)	Interlocked.Exchange(ref Unsafe.AsRef<ulong>(pValue), Unsafe.As<T, ulong>(ref value));
+					else if (value_ is bool)	Interlocked.Exchange(ref Unsafe.AsRef<int>(pValue), Unsafe.As<T, int>(ref value));	// int 와 동일하게 취급
+					else						throw new NotImplementedException("Not implementation");
 				}
 			}
 		}
 
-		public unsafe override void add(T addVal)
+		public unsafe override void addCount(T addVal)
 		{
 			fixed (void* pValue = &value_)
 			{
@@ -163,6 +165,7 @@ namespace TSUtil
 				else if (addVal is uint)		Interlocked.Add(ref Unsafe.AsRef<uint>(pValue), Unsafe.As<T, uint>(ref addVal));
 				else if (addVal is long)		Interlocked.Add(ref Unsafe.AsRef<long>(pValue), Unsafe.As<T, long>(ref addVal));
 				else if (addVal is ulong)		Interlocked.Add(ref Unsafe.AsRef<ulong>(pValue), Unsafe.As<T, ulong>(ref addVal));
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -178,6 +181,7 @@ namespace TSUtil
 				else if (value_ is uint)		Interlocked.Increment(ref Unsafe.AsRef<uint>(pValue));
 				else if (value_ is long)		Interlocked.Increment(ref Unsafe.AsRef<long>(pValue));
 				else if (value_ is ulong)		Interlocked.Increment(ref Unsafe.AsRef<ulong>(pValue));
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -193,6 +197,7 @@ namespace TSUtil
 				else if (value_ is uint)		Interlocked.Decrement(ref Unsafe.AsRef<uint>(pValue));
 				else if (value_ is long)		Interlocked.Decrement(ref Unsafe.AsRef<long>(pValue));
 				else if (value_ is ulong)		Interlocked.Decrement(ref Unsafe.AsRef<ulong>(pValue));
+				else							throw new NotImplementedException("Not implementation");
 			}
 		}
 
@@ -210,7 +215,7 @@ namespace TSUtil
 	{
 		public static ICounter<TCounterType>? create<TCounterType, TThreadType>()
 			where TCounterType : unmanaged
-			where TThreadType : unmanaged, ThreadType.__ThreadType<TThreadType>
+			where TThreadType : unmanaged, IThreadType<TThreadType>
 		{
 			return typeof(TThreadType) == typeof(ThreadType.Multi)
 				? new CSharedCounter<TCounterType>()
@@ -268,4 +273,29 @@ namespace TSUtil
 			Debug.Assert(test.value == -1);
 		}
 	}
+}
+
+namespace TSUtil
+{
+	// st version
+	public sealed class CCounter_Int8	: CCounter<sbyte>	{ public CCounter_Int8(sbyte value = default) : base(value) { } }
+	public sealed class CCounter_UInt8	: CCounter<byte>	{ public CCounter_UInt8(byte value = default) : base(value) { } }
+	public sealed class CCounter_Int16	: CCounter<short>	{ public CCounter_Int16(short value = default) : base(value) { } }
+	public sealed class CCounter_UInt16 : CCounter<ushort>	{ public CCounter_UInt16(ushort value = default) : base(value) { } }
+	public sealed class CCounter_Int32	: CCounter<int>		{ public CCounter_Int32(int value = default) : base(value) { } }
+	public sealed class CCounter_UInt32 : CCounter<uint>	{ public CCounter_UInt32(uint value = default) : base(value) { } }
+	public sealed class CCounter_Int64	: CCounter<long>	{ public CCounter_Int64(long value = default) : base(value) { } }
+	public sealed class CCounter_UInt64 : CCounter<ulong>	{ public CCounter_UInt64(ulong value = default) : base(value) { } }
+	public sealed class CCounter_Bool	: CCounter<bool>	{ public CCounter_Bool(bool value = default) : base(value) { } }
+
+	// mt version
+	public sealed class CSharedCounter_Int8		: CSharedCounter<sbyte>		{ public CSharedCounter_Int8(sbyte value = default) : base(value) { } }
+	public sealed class CSharedCounter_UInt8	: CSharedCounter<byte>		{ public CSharedCounter_UInt8(byte value = default) : base(value) { } }
+	public sealed class CSharedCounter_Int16	: CSharedCounter<short>		{ public CSharedCounter_Int16(short value = default) : base(value) { } }
+	public sealed class CSharedCounter_UInt16	: CSharedCounter<ushort>	{ public CSharedCounter_UInt16(ushort value = default) : base(value) { } }
+	public sealed class CSharedCounter_Int32	: CSharedCounter<int>		{ public CSharedCounter_Int32(int value = default) : base(value) { } }
+	public sealed class CSharedCounter_UInt32	: CSharedCounter<uint>		{ public CSharedCounter_UInt32(uint value = default) : base(value) { } }
+	public sealed class CSharedCounter_Int64	: CSharedCounter<long>		{ public CSharedCounter_Int64(long value = default) : base(value) { } }
+	public sealed class CSharedCounter_UInt64	: CSharedCounter<ulong>		{ public CSharedCounter_UInt64(ulong value = default) : base(value) { } }
+	public sealed class CSharedCounter_Bool		: CSharedCounter<bool>		{ public CSharedCounter_Bool(bool value = default) : base(value) { } }
 }

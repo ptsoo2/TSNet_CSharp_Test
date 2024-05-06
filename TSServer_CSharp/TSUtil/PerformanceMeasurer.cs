@@ -1,5 +1,6 @@
 ﻿
 using System.Diagnostics;
+using ThreadType;
 
 namespace TSUtil
 {
@@ -17,7 +18,7 @@ namespace TSUtil
 	/// 퍼포먼스 측정기
 	/// </summary>
 	public class CPerformanceMeasurer<T>
-		where T : unmanaged, ThreadType.__ThreadType<T>
+		where T : unmanaged, IThreadType<T>
 	{
 		protected ICounter<ulong>? nowCounter_ = CounterFactory.create<ulong, T>();
 		protected ICounter<ulong>? totalCounter_ = CounterFactory.create<ulong, T>();
@@ -77,6 +78,15 @@ namespace TSUtil
 		/// <summary>
 		/// thread safety
 		/// </summary>
+		public void addCount(ulong value)
+		{
+			nowCounter_?.addCount(value);
+			totalCounter_?.addCount(value);
+		}
+
+		/// <summary>
+		/// thread safety
+		/// </summary>
 		public void incrementCount()
 		{
 			nowCounter_?.increment();
@@ -100,4 +110,10 @@ namespace TSUtil
 			totalCounter_?.zeroize();
 		}
 	}
+}
+
+namespace TSUtil
+{
+	public sealed class CPerformanceMeasurer_ST : CPerformanceMeasurer<ThreadType.Single>;
+	public sealed class CPerformanceMeasurer_MT : CPerformanceMeasurer<ThreadType.Multi>;
 }

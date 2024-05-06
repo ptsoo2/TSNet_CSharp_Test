@@ -1,10 +1,102 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+namespace TSUtil
+{
+	namespace Inheritance.Multiple.Interface
+	{
+		interface A
+		{
+			public void a();
+		}
+		interface B
+		{
+			public void a();
+		}
+
+		class C : A, B
+		{
+			public void a()
+			{ }
+		}
+	}
+
+	namespace Inheritance.Multiple.Abstract
+	{
+		abstract class A
+		{
+			public abstract void a();
+		}
+		abstract class B
+		{
+			public abstract void a();
+		}
+
+		//class C : A, B	// CS1701: C 클래스는 기본 클래스를 여러개 포함할 수 없습니다.
+		//{
+		//	public override void a()
+		//	{ }
+		//}
+	}
+
+	namespace Inheritance.Multiple.AbstractInterfaceMix
+	{
+		interface A
+		{
+			public abstract void a();
+		}
+		abstract class B
+		{
+			public abstract void a();
+		}
+
+		class C : B, A
+		{
+			public override void a()
+			{
+				// base.a();	// CS0205: 추상 기본 멤버를 호출할 수 없습니다.
+			}
+		}
+	}
+
+	namespace Inheritance.Multiple.AbstractInterfaceMix2
+	{
+		interface A
+		{
+			public /*abstract*/ void a();
+		}
+		abstract class B
+		{
+			public abstract void a();
+		}
+
+		class C : B, A
+		{
+			public override void a()
+			{ }
+		}
+	}
+
+	namespace Inheritance.Multiple.AbstractInterfaceVirtual
+	{
+		interface A
+		{
+			public /*abstract*/ void a();
+		}
+		abstract class B
+		{
+			public virtual void a() { }
+		}
+
+		class C : B, A
+		{
+			public override void a()
+			{
+				base.a();
+			}
+		}
+	}
+}
 
 namespace TSUtil
 {
@@ -160,6 +252,82 @@ namespace TSUtil
 		/// </summary>
 		static public void Performance_Boxing()
 		{
+			const int TEST_ELEMENT_COUNT = 1000000;
+			const int TEST_LOOP_COUNT = 5;
+
+			var makeObjList = () =>
+			{
+				List<object> check = new List<object>();
+				for (int seek = 0; seek < TEST_ELEMENT_COUNT; ++seek)
+				{
+					check.Add(seek);
+				}
+				return check;
+			};
+
+			var makeIntList = () =>
+			{
+				List<int> check = new List<int>();
+				for (int seek = 0; seek < TEST_ELEMENT_COUNT; ++seek)
+				{
+					check.Add(seek);
+				}
+				return check;
+			};
+
+			Console.WriteLine("`List<object>`");
+			Bench(() => { makeObjList(); }, TEST_LOOP_COUNT);
+
+			Console.WriteLine("`List<int>`");
+			Bench(() => { makeIntList(); }, TEST_LOOP_COUNT);
+
+			Console.WriteLine("`foreach List<object>`");
+			Bench(() =>
+				{
+					var check = makeObjList();
+					foreach (int obj in check)
+					{
+						var a = obj;
+					}
+				}, TEST_LOOP_COUNT
+			);
+
+			Console.WriteLine("`for List<object>`");
+			Bench(() =>
+				{
+					var check = makeObjList();
+					for (int i = 0; i < check.Count; ++i)
+					{
+						var a = check[i];
+					}
+				}, TEST_LOOP_COUNT
+			);
+
+			Console.WriteLine("`foreach List<int>`");
+			Bench(() =>
+				{
+					var check = makeIntList();
+					foreach (int obj in check)
+					{
+						var a = obj;
+					}
+				}, TEST_LOOP_COUNT
+			);
+
+			Console.WriteLine("`for List<int>`");
+			Bench(() =>
+				{
+					var check = makeIntList();
+					for (int i = 0; i < check.Count; ++i)
+					{
+						var a = check[i];
+					}
+				}, TEST_LOOP_COUNT
+			);
+		}
+
+		static public void Performance_Boxing2()
+		{
 			const int TEST_COUNT = 10000000;
 
 			Bench(
@@ -282,7 +450,7 @@ namespace TSUtil
 				int a = 0;
 				for (int i = 0; i < 5; ++i)
 				{
-					Test.Bench(() =>
+					Bench(() =>
 					{
 						for (uint i = 0; i < TEST_COUNT; ++i)
 						{
@@ -297,7 +465,7 @@ namespace TSUtil
 
 				for (int i = 0; i < 5; ++i)
 				{
-					Test.Bench(() =>
+					Bench(() =>
 					{
 						for (uint i = 0; i < TEST_COUNT; ++i)
 						{
@@ -318,7 +486,7 @@ namespace TSUtil
 				Console.WriteLine("==");
 				for (int i = 0; i < 5; ++i)
 				{
-					Test.Bench(() =>
+					Bench(() =>
 					{
 						for (uint i = 0; i < TEST_COUNT; ++i)
 						{
@@ -334,7 +502,7 @@ namespace TSUtil
 				Console.WriteLine("is");
 				for (int i = 0; i < 5; ++i)
 				{
-					Test.Bench(() =>
+					Bench(() =>
 					{
 						for (uint i = 0; i < TEST_COUNT; ++i)
 						{
@@ -352,7 +520,7 @@ namespace TSUtil
 				Console.WriteLine("equals");
 				for (int i = 0; i < 5; ++i)
 				{
-					Test.Bench(() =>
+					Bench(() =>
 					{
 						for (uint i = 0; i < TEST_COUNT; ++i)
 						{
@@ -388,13 +556,14 @@ namespace TSUtil
 				long elapsedTime = watch.ElapsedMilliseconds;
 				totalElapsedTime += elapsedTime;
 
-				Console.WriteLine($"[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
+				//Console.WriteLine($"[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
+				Console.WriteLine($"Elapsed time: {elapsedTime.ToString()} ms");
 
 				if (intervalMilliseconds > 0)
 					Thread.Sleep(intervalMilliseconds);
 			}
 
-			Console.WriteLine($"Total Elapsed time: {totalElapsedTime.ToString()} ms");
+			// Console.WriteLine($"Total Elapsed time: {totalElapsedTime.ToString()} ms");
 		}
 
 		/// <summary>
@@ -407,13 +576,14 @@ namespace TSUtil
 
 		static void TestAll()
 		{
-			Test.Syntax_IsAndEqualNull();
-			Test.Syntax_IsAndEqualType();
-			Test.Syntax_IsAndEqualBool();
-			Test.Syntax_IIFE();
-			Test.Crash_LambdaScope();
-			Test.Performance_IsAndEquals();
-			Test.Performance_Boxing();
+			Syntax_IsAndEqualNull();
+			Syntax_IsAndEqualType();
+			Syntax_IsAndEqualBool();
+			Syntax_IIFE();
+			Crash_LambdaScope();
+			Performance_IsAndEquals();
+			Performance_Boxing();
+			Performance_Boxing2();
 		}
 	}
 }
