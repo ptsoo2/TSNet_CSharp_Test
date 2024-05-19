@@ -5,15 +5,13 @@ namespace TSUtil
 {
 	public class CSystem
 	{
-		public static async Task<double> GetCpuUsageForProcess(int delay = 500)
+		public static double GetCpuUsageForProcess(Process process, int delay = 500)
 		{
 			var startTime = DateTime.UtcNow;
-			var startCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
-			
-			await Task.Delay(delay);
+			var startCpuUsage = process.TotalProcessorTime;
 
 			var endTime = DateTime.UtcNow;
-			var endCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+			var endCpuUsage = process.TotalProcessorTime;
 
 			var cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
 			var totalMsPassed = (endTime - startTime).TotalMilliseconds;

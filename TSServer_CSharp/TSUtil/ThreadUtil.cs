@@ -1,8 +1,8 @@
 ﻿
 namespace TSUtil
 {
-    public class ThreadUtil
-    {
+	public class ThreadUtil
+	{
 		public static void setThreadName(string threadName)
 		{
 			Thread.CurrentThread.Name = threadName;
@@ -19,12 +19,12 @@ namespace TSUtil
 			Console.WriteLine($"Max Thread count: {workerThreads.ToString()}, {completionPortThreads.ToString()}");
 		}
 
-		public static void printWithThreadInfo(string? desc = null)
-		{
-			int threadId = Thread.CurrentThread.ManagedThreadId;
-			string? threadName = Thread.CurrentThread.Name;
+		//public static void printWithThreadInfo(string? desc = null)
+		//{
+		//	int threadId = Thread.CurrentThread.ManagedThreadId;
+		//	string? threadName = Thread.CurrentThread.Name;
 
-			Console.WriteLine($"[{threadId.ToString()}] {desc} `{threadName}`");
-		}
+		//	Console.WriteLine($"[{threadId.ToString()}] {desc} `{threadName}`");
+		//}
 	}
 }

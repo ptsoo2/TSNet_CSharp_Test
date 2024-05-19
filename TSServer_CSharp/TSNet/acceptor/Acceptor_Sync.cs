@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net.Sockets;
 using TSUtil;
 
 namespace TSNet
 {
 	public class CAcceptor_Sync : CAcceptorBase
 	{
-		public CAcceptor_Sync(string ip, int port, int backlog = int.MaxValue)
-			: base(ip, port, backlog)
+		public CAcceptor_Sync(CAcceptorConfig config, fnOnAccepted_t onAccepted)
+			: base(config, onAccepted)
 		{ }
 
-		protected override void _processIO()
+		protected override void _runOnce()
 		{
 			Task.Factory.StartNew(new Action(_processIOInternal), TaskCreationOptions.LongRunning);
 		}
@@ -24,11 +19,11 @@ namespace TSNet
 			// ptsoo todo - 일단 무한 루프로 -_-
 			while (true)
 			{
-				base._processIO();
+				base._runOnce();
 			}
 		}
 
-		protected override object? _generateIO()
+		protected override object? _initiate()
 		{
 			ArgumentNullException.ThrowIfNull(socket_, "Not opened socket");
 
@@ -46,20 +41,15 @@ namespace TSNet
 			return acceptSocket;
 		}
 
-		protected override void _onCompletionIO(object? result)
+		protected override void _complete(object? result)
 		{
 			if (result is null)
 			{
-				ThreadUtil.printWithThreadInfo("result is null!!");
+				LOG.ERROR("result is null!!");
 				return;
 			}
 
-			performanceMeasurer.incrementCount();
-
-			Socket socket = (Socket)result;
-
-			// ptsoo todo - 걍 바로 끊는다 -_-
-			socket.Shutdown(SocketShutdown.Both);
+			fnOnAccepted_((Socket)result);
 		}
 	}
 }

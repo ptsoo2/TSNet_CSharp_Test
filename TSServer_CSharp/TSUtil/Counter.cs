@@ -19,6 +19,7 @@ namespace TSUtil
 		public void				addCount(T addVal);
 		public void				increment();
 		public void				decrement();
+		public T				compareExchange(T newValue, T desired);
 		public void				zeroize();
 	}
 
@@ -35,6 +36,7 @@ namespace TSUtil
 		public abstract void	addCount(T addVal);
 		public abstract void	increment();
 		public abstract void	decrement();
+		public abstract T		compareExchange(T newValue, T desired);
 		public abstract void	zeroize();
 	}
 
@@ -98,6 +100,51 @@ namespace TSUtil
 			}
 		}
 
+		public override unsafe T	compareExchange(T newValue, T desired)
+		{
+			T origin = value_;
+			fixed (void* pValue = &value_)
+			{
+				if (value_ is sbyte)
+				{
+					if (Unsafe.As<T, sbyte>(ref value_) == *(sbyte*)(&desired))		value_ = newValue;
+				}
+				else if (value_ is byte)
+				{
+					if (Unsafe.As<T, byte>(ref value_) == *(byte*)(&desired))		value_ = newValue;
+				}
+				else if (value_ is short)
+				{
+					if (Unsafe.As<T, short>(ref value_) == *(short*)(&desired))		value_ = newValue;
+				}
+				else if (value_ is ushort)
+				{
+					if (Unsafe.As<T, ushort>(ref value_) == *(ushort*)(&desired))	value_ = newValue;
+				}
+				else if (value_ is int)
+				{
+					if (Unsafe.As<T, int>(ref value_) == *(int*)(&desired))			value_ = newValue;
+				}
+				else if (value_ is uint)
+				{
+					if (Unsafe.As<T, uint>(ref value_) == *(uint*)(&desired))		value_ = newValue;
+				}
+				else if (value_ is long)
+				{
+					if (Unsafe.As<T, long>(ref value_) == *(long*)(&desired))		value_ = newValue;
+				}
+				else if (value_ is ulong)
+				{
+					if (Unsafe.As<T, ulong>(ref value_) == *(ulong*)(&desired))		value_ = newValue;
+				}
+				else
+				{
+					throw new NotImplementedException("Not implementation");
+				}
+			}
+			return origin;
+		}
+
 		public override unsafe void zeroize()
 		{
 			value = Unsafe.As<int, T>(ref ZERO);
@@ -153,7 +200,7 @@ namespace TSUtil
 			}
 		}
 
-		public unsafe override void addCount(T addVal)
+		public override unsafe void addCount(T addVal)
 		{
 			fixed (void* pValue = &value_)
 			{
@@ -169,7 +216,7 @@ namespace TSUtil
 			}
 		}
 
-		public unsafe override void increment()
+		public override unsafe void increment()
 		{
 			fixed (void* pValue = &value_)
 			{
@@ -185,7 +232,7 @@ namespace TSUtil
 			}
 		}
 
-		public unsafe override void decrement()
+		public override unsafe void decrement()
 		{
 			fixed (void* pValue = &value_)
 			{
@@ -201,6 +248,59 @@ namespace TSUtil
 			}
 		}
 
+		public override unsafe T	compareExchange(T newValue, T desired)
+		{
+			fixed (void* pValue = &value_)
+			{
+				if (value_ is sbyte)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<int>(pValue), Unsafe.As<T, int>(ref newValue), Unsafe.As<T, int>(ref desired));
+					return Unsafe.As<int, T>(ref a);
+				}
+				else if (value_ is byte)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<uint>(pValue), Unsafe.As<T, uint>(ref newValue), Unsafe.As<T, uint>(ref desired));
+					return Unsafe.As<uint, T>(ref a);
+				}
+				else if (value_ is short)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<int>(pValue), Unsafe.As<T, int>(ref newValue), Unsafe.As<T, int>(ref desired));
+					return Unsafe.As<int, T>(ref a);
+				}
+				else if (value_ is ushort)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<uint>(pValue), Unsafe.As<T, uint>(ref newValue), Unsafe.As<T, uint>(ref desired));
+					return Unsafe.As<uint, T>(ref a);
+				}
+				else if (value_ is int)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<int>(pValue), Unsafe.As<T, int>(ref newValue), Unsafe.As<T, int>(ref desired));
+					return Unsafe.As<int, T>(ref a);
+				}
+				else if (value_ is uint)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<uint>(pValue), Unsafe.As<T, uint>(ref newValue), Unsafe.As<T, uint>(ref desired));
+					return Unsafe.As<uint, T>(ref a);
+				}
+				else if (value_ is long)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<long>(pValue), Unsafe.As<T, long>(ref newValue), Unsafe.As<T, long>(ref desired));
+					return Unsafe.As<long, T>(ref a);
+				}
+				else if (value_ is ulong)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<ulong>(pValue), Unsafe.As<T, ulong>(ref newValue), Unsafe.As<T, ulong>(ref desired));
+					return Unsafe.As<ulong, T>(ref a);
+				}
+				else if (value_ is bool)
+				{
+					var a = Interlocked.CompareExchange(ref Unsafe.AsRef<int>(pValue), Unsafe.As<T, int>(ref newValue), Unsafe.As<T, int>(ref desired));
+					return Unsafe.As<int, T>(ref a);
+				}
+				else							throw new NotImplementedException("Not implementation");
+			}
+		}
+
 		public override unsafe void zeroize()
 		{
 			value = Unsafe.As<int, T>(ref ZERO);
@@ -211,7 +311,7 @@ namespace TSUtil
 	/// <summary>
 	/// 스레드 사용 유형에 따라서 Counter 할당
 	/// </summary>
-	public class CounterFactory
+	public static class CounterFactory
 	{
 		public static ICounter<TCounterType>? create<TCounterType, TThreadType>()
 			where TCounterType : unmanaged

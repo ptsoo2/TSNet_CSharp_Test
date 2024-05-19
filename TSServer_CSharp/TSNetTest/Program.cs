@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Net.Sockets;
 using TSNet;
 using TSUtil;
+using Serilog;
+using Serilog.Events;
 
 namespace TSNetTest
 {
@@ -132,73 +134,61 @@ namespace TSNetTest
 
 	internal class Program
 	{
-		static Process nowProcess = Process.GetCurrentProcess();
+		static Process nowProcess_ = Process.GetCurrentProcess();
 		static Latch waitControl_ = new();
+		static CAcceptorBase? acceptor_ = null;
 
-		public static void launchMonitor()
+		static readonly CPerformanceMeasurer_MT acceptPerformanceMeasurer = new();
+
+		public static void launchMonitor(int intervalMilliSec = 1000)
 		{
-			int SHORT_INTERVAL_MILLISEC = 1.SEC_TO_MILLISEC();
-			int DEFAULT_INTERVAL_MILLISEC = 5.SEC_TO_MILLISEC();
-
-			// cpu monitor
-			Task.Factory.StartNew(
-				async () =>
-				{
-					while (waitControl_.isEnd() == false)
-					{
-						ThreadUtil.printWithThreadInfo(ThreadPool.PendingWorkItemCount.ToString());
-
-						await Task.Delay(SHORT_INTERVAL_MILLISEC);
-					}
-				}, TaskCreationOptions.LongRunning
-			);
-
-			// cpu monitor
-			Task.Factory.StartNew(
-				async () =>
-				{
-					double peakCPUUsage = 0;
-					while (waitControl_.isEnd() == false)
-					{
-						double nowCpuUsage = await CSystem.GetCpuUsageForProcess(DEFAULT_INTERVAL_MILLISEC);
-						peakCPUUsage = double.Max(nowCpuUsage, peakCPUUsage);
-
-						string systemDesc = $"""
-						CPU: {nowCpuUsage.ToString("0.00")} 
-						| PeakCPU: {peakCPUUsage.ToString("0.00")}
-						""";
-						ThreadUtil.printWithThreadInfo($"[CPU] {systemDesc.Replace(Environment.NewLine, "")}");
-					}
-				}, TaskCreationOptions.LongRunning
-			);
-
-			// Memory monitor
+			// monitor
 			Task.Factory.StartNew(
 				() =>
 				{
-					ThreadUtil.setThreadName("Memory monitor");
+					ThreadUtil.setThreadName("monitor");
 
-					ulong loopCount = 0;
 					PerformanceProperties properties;
+					double peakCPUUsage = 0;
 
 					while (waitControl_.isEnd() == false)
 					{
-						if (CAcceptorBase.performanceMeasurer.update(DEFAULT_INTERVAL_MILLISEC, out properties) == true)
+						if (acceptPerformanceMeasurer.update(intervalMilliSec, out properties) == true)
 						{
-							//ThreadUtil.printWithThreadInfo($"Accepted socket per sec: {properties.nowCount_.ToString()} {properties.totalCount_.ToString()}");
+							nowProcess_.Refresh();
 
-							nowProcess.Refresh();
+							// Accept
+							{
+								LOG.INFO($"[Acceptor] Accept socket(now: {properties.nowCount_.ToString()}, total: {properties.totalCount_.ToString()})");
+							}
 
-							string systemDesc = $"""
-							PeakVirtual: {nowProcess.PeakVirtualMemorySize64.BYTE_TO_GIGABYTE().ToString()} 
-							| PeakPaged: {nowProcess.PeakPagedMemorySize64.BYTE_TO_MEGABYTE().ToString()} 
-							| PeakWorkingSet: {nowProcess.PeakWorkingSet64.BYTE_TO_MEGABYTE().ToString()} 
-							| GC: {GC.GetTotalMemory(true).BYTE_TO_GIGABYTE().ToString()}
-							""";
+							// CPU
+							{
+								double nowCpuUsage = CSystem.GetCpuUsageForProcess(nowProcess_, intervalMilliSec);
+								peakCPUUsage = double.Max(nowCpuUsage, peakCPUUsage);
 
-							ThreadUtil.printWithThreadInfo($"[Memory] {systemDesc.Replace(Environment.NewLine, "")}");
+								string descCpuUsage = $"""
+													CPU: {nowCpuUsage.ToString("0.00")} 
+													| PeakCPU: {peakCPUUsage.ToString("0.00")}
+													""";
+								LOG.INFO($"[CPU] {descCpuUsage.Replace(Environment.NewLine, "")}");
+							}
 
-							++loopCount;
+							// Memory
+							{
+								string descMemoryUsage = $"""
+														PeakVirtual: {nowProcess_.PeakVirtualMemorySize64.BYTE_TO_GIGABYTE().ToString()} 
+														| PeakPaged: {nowProcess_.PeakPagedMemorySize64.BYTE_TO_MEGABYTE().ToString()} 
+														| PeakWorkingSet: {nowProcess_.PeakWorkingSet64.BYTE_TO_MEGABYTE().ToString()} 
+														| GC: {GC.GetTotalMemory(true).BYTE_TO_GIGABYTE().ToString()}
+														""";
+								LOG.INFO($"[Memory] {descMemoryUsage.Replace(Environment.NewLine, "")}");
+							}
+
+							// WorkQueueCount
+							{
+								LOG.INFO($"[Thread] Thread: {ThreadPool.ThreadCount.ToString()}, Complete: {ThreadPool.CompletedWorkItemCount.ToString()}, Pending: {ThreadPool.PendingWorkItemCount.ToString()}");
+							}
 						}
 
 						Thread.Sleep(1);
@@ -207,21 +197,22 @@ namespace TSNetTest
 			);
 		}
 
-		static CAcceptor makeAcceptor()
+		static void startup()
 		{
-			CAcceptor acceptor = new CAcceptor("0.0.0.0", 30002);
-			acceptor.start();
-			return acceptor;
-		}
+			//string outputTemplate = "{{\"dt\":\"{Timestamp:yyyy-MM-ddTHH:mm:ss.fff}\",\"lv\":\"{Level:u4}\",\"fn\":\"{SourceLoc}\",\"thr\":\"{ThreadId}({ThreadName})\",\"ct\":\"{Message:lj}\"}}{NewLine}{Exception}";
+			string outputTemplate = "{{\"dt\":\"{Timestamp:yyyy-MM-ddTHH:mm:ss.fff}\",\"lv\":\"{Level:u4}\",\"fn\":\"{SourceLoc}\",\"ct\":\"{Message:lj}\"}}{NewLine}{Exception}";
 
-		static void Main(string[] args)
-		{
-#pragma warning disable CS0162
+			LoggerConfiguration loggerConfig = new LoggerConfiguration();
+			Log.Logger = loggerConfig
+				.MinimumLevel.Is(LogEventLevel.Verbose)
+				.WriteTo.Console(LogEventLevel.Verbose, outputTemplate)
+				.Enrich.FromLogContext()
+				//.Enrich.WithThreadId()
+				//.Enrich.WithThreadName()
+				.CreateLogger();
 
-			ThreadUtil.setThreadName("Main");
-			ThreadUtil.printWithThreadInfo("Start of main");
-
-			//launchMonitor();
+			ThreadUtil.setThreadName("main");
+			LOG.DEBUG($"Start of main(lang version: {Environment.Version.ToString()})");
 
 			// launch stop thread
 			Task.Factory.StartNew(
@@ -234,19 +225,34 @@ namespace TSNetTest
 				}, TaskCreationOptions.LongRunning
 			);
 
-			CAcceptor acceptor = makeAcceptor();
-			waitControl_.wait();
-			acceptor.stop();
+			launchMonitor(5.SEC_TO_MILLISEC());
+		}
 
-			int count = 100;
-			while (count-- > 0)
-			{
-				GC.Collect();
-				GC.WaitForPendingFinalizers();
-				Thread.Sleep(1);
-			}
+		static void cleanup()
+		{
+			acceptor_?.stop();
+		}
+
+		static void Main(string[] args)
+		{
+#pragma warning disable CS0162
+			startup();
+
+			acceptor_ = CAcceptorFactory.create<CAcceptor_Async_TAP>(new CAcceptorConfig { port = 30002, },
+				(Socket socket) =>
+				{
+					acceptPerformanceMeasurer.incrementCount();
+
+					socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Linger, new LingerOption(true, 0));
+					LOG.DEBUG(socket.RemoteEndPoint?.ToString() ?? "unknown");
+				}
+			);
+
+			acceptor_?.start();
+			waitControl_.wait();
+
+			cleanup();
 #pragma warning restore CS0162
 		}
 	}
 }
-

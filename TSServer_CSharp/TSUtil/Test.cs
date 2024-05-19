@@ -351,6 +351,50 @@ namespace TSUtil
 			);
 		}
 
+		static public void Performance_Dynamic()
+		{
+			Bench(() =>
+				{
+					for (int i = 0; i < 10000000; ++i)
+					{
+						int a = 1;
+						int b = 1;
+						int c = 0;
+						Volatile.Write(ref c, a + b);
+					}
+				}
+			);
+
+			Bench(() =>
+				{
+					for (int i = 0; i < 10000000; ++i)
+					{
+						dynamic a = 1;
+						dynamic b = 1;
+						dynamic c = 0;
+						Volatile.Write(ref c, a + b);
+					}
+				}
+			);
+
+			unsafe void __test()
+			{
+				for (int i = 0; i < 10000000; ++i)
+				{
+					int a = 1;
+					int b = 1;
+					int c = 0;
+
+					void* pA = &a;
+					void* pB = &b;
+
+					Volatile.Write(ref c, (*(int*)pA) + (*(int*)pB));
+				}
+			}
+
+			Bench(__test);
+		}
+
 		static public void Performance_ConcurrentDictionary()
 		{
 			const int TEST_COUNT = 5;
@@ -539,7 +583,7 @@ namespace TSUtil
 		/// 코드 수행 시간 측정
 		/// </summary>		
 		public delegate void fnBench_t();
-		static public void Bench(fnBench_t fnBench, int count = 1, int intervalMilliseconds = 0)
+		static public void Bench(fnBench_t fnBench, int count = 1, int intervalMilliseconds = 0, string desc = "")
 		{
 			if (count < 1)
 				throw new ArgumentOutOfRangeException($"Invalid count({count.ToString()})");
@@ -556,14 +600,14 @@ namespace TSUtil
 				long elapsedTime = watch.ElapsedMilliseconds;
 				totalElapsedTime += elapsedTime;
 
-				//Console.WriteLine($"[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
-				Console.WriteLine($"Elapsed time: {elapsedTime.ToString()} ms");
+				// Console.WriteLine($"{desc}[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
+				//Console.WriteLine($"{desc}Elapsed time: {elapsedTime.ToString()} ms");
 
 				if (intervalMilliseconds > 0)
 					Thread.Sleep(intervalMilliseconds);
 			}
 
-			// Console.WriteLine($"Total Elapsed time: {totalElapsedTime.ToString()} ms");
+			Console.WriteLine($"{desc}Total Elapsed time: {totalElapsedTime.ToString()} ms");
 		}
 
 		/// <summary>
@@ -584,6 +628,7 @@ namespace TSUtil
 			Performance_IsAndEquals();
 			Performance_Boxing();
 			Performance_Boxing2();
+			Performance_Dynamic();
 		}
 	}
 }
