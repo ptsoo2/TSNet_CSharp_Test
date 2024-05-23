@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using TSUtil;
 
 namespace TSNet
 {
@@ -9,7 +10,7 @@ namespace TSNet
 			IPAddress? ipAddress = IPAddress.Parse(ip);
 			if (IPAddress.TryParse(ip, out ipAddress) is false)
 			{
-				Console.WriteLine($"Failed to parse ipaddress({ip})");
+				LOG.ERROR($"Failed to parse ipaddress({ip})");
 				return null;
 			}
 
@@ -20,7 +21,7 @@ namespace TSNet
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"Failed to parse ipEndPoint(error: {exception.ToString()}, ip: {ip}, port: {port.ToString()})");
+				LOG.ERROR($"Failed to parse ipEndPoint(error: {exception.ToString()}, ip: {ip}, port: {port.ToString()})");
 				return null;
 			}
 

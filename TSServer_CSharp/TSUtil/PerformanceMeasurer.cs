@@ -4,14 +4,20 @@ using ThreadType;
 
 namespace TSUtil
 {
-	public struct PerformanceProperties
+	public struct PerformanceEvent
 	{
+		public ulong eventId_ = 0;
+
 		public ulong nowCount_ = 0;
 		public ulong totalCount_ = 0;
+		public ulong avgCount_ => (eventId_ < 1) ? 0 : (totalCount_ / eventId_);
+
 		public long totalElapsedMilliseconds_ = 0;
 
-		public PerformanceProperties()
-		{ }
+		public PerformanceEvent(ulong eventId)
+		{
+			eventId_ = eventId;
+		}
 	}
 
 	/// <summary>
@@ -20,37 +26,27 @@ namespace TSUtil
 	public class CPerformanceMeasurer<T>
 		where T : unmanaged, IThreadType<T>
 	{
-		protected ICounter<ulong>? nowCounter_ = CounterFactory.create<ulong, T>();
-		protected ICounter<ulong>? totalCounter_ = CounterFactory.create<ulong, T>();
+		protected ICounter<ulong> nowCounter_ = CounterFactory.create<ulong, T>()!;
+		protected ICounter<ulong> totalCounter_ = CounterFactory.create<ulong, T>()!;
 
 		/// <summary>
 		/// not thread safety
 		/// </summary>
 		protected Stopwatch watch_ = new();
 		protected long totalElapsedMilliseconds_ = 0;
+		protected ICounter<ulong> captureCounter_ = CounterFactory.create<ulong, ThreadType.Single>()!;
 
 		/// <summary>
 		/// thread safety.
 		/// now, total 은 별도의 Interlocked 연산이기에 둘 사이의 관계에서 정확함은 보장하지 않음
 		/// </summary>
-		public ulong nowCount => (nowCounter_ is null) ? 0 : nowCounter_.value;
-		public ulong totalCount => (totalCounter_ is null) ? 0 : totalCounter_.value;
-		public PerformanceProperties properties
-		{
-			get
-			{
-				PerformanceProperties properties;
-				properties.nowCount_ = nowCount;
-				properties.totalCount_ = totalCount;
-				properties.totalElapsedMilliseconds_ = totalElapsedMilliseconds_;
-				return properties;
-			}
-		}
+		public ulong nowCount => nowCounter_.value;
+		public ulong totalCount => totalCounter_.value;
 
 		/// <summary>
 		/// not thread safety
 		/// </summary>
-		public bool update(long criteriaElapsedTime, out PerformanceProperties outProperties)
+		public bool capture(long criteriaElapsedTime, out PerformanceEvent outProperties)
 		{
 			// 실행중이 아니라면 시작
 			if (watch_.IsRunning == false)
@@ -66,7 +62,16 @@ namespace TSUtil
 			// 도래했다면, 결과 뽑고,
 			{
 				totalElapsedMilliseconds_ += elapsedMilliseconds;
-				outProperties = properties;
+
+				var totalCaptureCount = captureCounter_.increment();
+				{
+					outProperties = new PerformanceEvent(totalCaptureCount)
+					{
+						nowCount_ = nowCount,
+						totalCount_ = totalCount,
+						totalElapsedMilliseconds_ = totalElapsedMilliseconds_
+					};
+				}
 			}
 
 			// 측정 재시작
@@ -80,8 +85,8 @@ namespace TSUtil
 		/// </summary>
 		public void addCount(ulong value)
 		{
-			nowCounter_?.addCount(value);
-			totalCounter_?.addCount(value);
+			nowCounter_.addCount(value);
+			totalCounter_.addCount(value);
 		}
 
 		/// <summary>
@@ -89,8 +94,8 @@ namespace TSUtil
 		/// </summary>
 		public void incrementCount()
 		{
-			nowCounter_?.increment();
-			totalCounter_?.increment();
+			nowCounter_.increment();
+			totalCounter_.increment();
 		}
 
 		/// <summary>
@@ -98,7 +103,7 @@ namespace TSUtil
 		/// </summary>
 		public void resetNowCount()
 		{
-			nowCounter_?.zeroize();
+			nowCounter_.zeroize();
 		}
 
 		/// <summary>
@@ -106,8 +111,8 @@ namespace TSUtil
 		/// </summary>
 		public void resetAllCount()
 		{
-			nowCounter_?.zeroize();
-			totalCounter_?.zeroize();
+			nowCounter_.zeroize();
+			totalCounter_.zeroize();
 		}
 	}
 }

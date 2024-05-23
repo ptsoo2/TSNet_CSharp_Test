@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "TSNetTest": {
+      "commandName": "Project",
+      "remoteDebugEnabled": false,
+      "hotReloadEnabled": true
+    }
+  }
+}

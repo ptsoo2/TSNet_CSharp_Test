@@ -1,36 +1,106 @@
-﻿namespace TSNet
-{
-	public class CTCPSession : IDisposable
-	{
-		private bool isDisposed_ = false;
+﻿using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using TSUtil;
 
-		// // TODO: 비관리형 리소스를 해제하는 코드가 'Dispose(bool disposing)'에 포함된 경우에만 종료자를 재정의합니다.
-		~CTCPSession()
+namespace TSNet
+{
+	public class CTCPSession
+	{
+		public long handle => (socket_?.Handle.ToInt64() ?? -1);
+
+		protected Socket socket_ = null!;
+		protected CMessageBuffer messageBuffer_ = null!;
+
+		public void start(Socket socket, int bufferSize)
 		{
-			// 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
-			Dispose(isManualDispose: false);
+			messageBuffer_ = new CMessageBuffer(bufferSize, bufferSize);
+
+			socket_ = socket;
+			LOG.INFO($"Started Session(socket: {handle.ToString()})");
+
+			_beginRecv().DetectThrowOnDispose();
 		}
 
-		protected virtual void Dispose(bool isManualDispose)
+		protected async Task _beginRecv()
 		{
-			if (isDisposed_ == true)
-				return;
-
-			if (isManualDispose == true)
+			while (true)
 			{
-				// TODO: 관리형 상태(관리형 개체)를 삭제합니다.
+				ArraySegment<byte> writableBuffer = messageBuffer_.getWritableBuffer();
+				if (writableBuffer.isEmpty() == true)
+				{
+					LOG.ERROR($"Recv buffer full!!(socket: {handle.ToString()}");
+					_close();
+					return;
+				}
+
+				int recvSize = 0;
+				try
+				{
+					recvSize = await socket_?.ReceiveAsync(writableBuffer, SocketFlags.None)!;
+				}
+				catch (Exception exception)
+				{
+					LOG.ERROR($"Exception!!(error: {exception.Message}, socket: {handle.ToString()}");
+					_close();
+					return;
+				}
+
+				_endRecv(recvSize);
+			}
+		}
+
+		protected void _endRecv(int size)
+		{
+			if (size < 1)
+			{
+				LOG.ERROR($"Size is zero!!(socket: {handle.ToString()}, size: {size.ToString()})");
+				_close();
+				return;
 			}
 
-			// TODO: 비관리형 리소스(비관리형 개체)를 해제하고 종료자를 재정의합니다.
-			// TODO: 큰 필드를 null로 설정합니다.
-			isDisposed_ = true;
+			messageBuffer_.onWriteEnd(size);
+
+			while (true)
+			{
+				ReadOnlySpan<byte> readableBuffer = messageBuffer_.getReadableBuffer();
+				if (readableBuffer.isEmpty() == true)
+					break;
+
+				if (readableBuffer.Length < MessageHeader.PACKET_HEADER_LENGTH)
+					break;
+
+				MessageHeader header = MemoryMarshal.Read<MessageHeader>(readableBuffer);
+				if (readableBuffer.Length < header.length_)
+					break;
+
+				// 읽을 수 있는 만큼으로 줄여주고,
+				readableBuffer = readableBuffer.Slice(0, header.length_);
+
+				messageBuffer_.onPreReadEnd(readableBuffer.Length);
+
+				{
+					TestMessage message = new TestMessage();
+					message.readFrom(ref readableBuffer);
+					// LOG.DEBUG($"message: `{message.message ?? "unknown"}`, size: {readableBuffer.Length.ToString()}");
+				}
+
+				messageBuffer_.onReadEnd(readableBuffer.Length);
+			}
 		}
 
-		public void Dispose()
+		protected void _close()
 		{
-			// 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
-			Dispose(isManualDispose: true);
-			GC.SuppressFinalize(this);
+			try
+			{
+				socket_?.Close();
+				socket_ = null!;
+			}
+			catch (SocketException exception)
+			{
+				// pass
+				SocketError errorCode = exception.SocketErrorCode;
+				LOG.ERROR($"SocketException (message: {exception.Message}, errorCode: {errorCode.toInt().ToString()})");
+			}
 		}
 	}
 }

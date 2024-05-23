@@ -1,8 +1,18 @@
-﻿using System.Collections.Concurrent;
+﻿using Serilog.Context;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace TSUtil
 {
+	/// <summary>
+	/// ptsoo todo - 퍼포먼스 체크에 사용할 수 있는 어트리뷰트가 있더라. 나중에 사용해보자
+	/// https://github.com/dotnet/BenchmarkDotNet
+	/// [MemoryDiagnoser]
+	/// [Benchmark]
+	/// [BenchmarkCategory]
+	/// </summary>
+
 	namespace Inheritance.Multiple.Interface
 	{
 		interface A
@@ -580,6 +590,76 @@ namespace TSUtil
 		}
 
 		/// <summary>
+		/// 배열 할당 방법의 차이에 따른 비교
+		/// </summary>
+		public static void Performance_AllocateArray()
+		{
+			/*
+			buffer_ = GC.AllocateArray<byte>(size);
+
+			Elapsed time: 452 ms
+			Elapsed time: 428 ms
+			Elapsed time: 444 ms
+			Elapsed time: 426 ms
+			Elapsed time: 434 ms
+			Total Elapsed time: 2184 ms
+			*/
+
+			/*
+			buffer_ = new byte[size];
+
+			Elapsed time: 338 ms
+			Elapsed time: 291 ms
+			Elapsed time: 288 ms
+			Elapsed time: 318 ms
+			Elapsed time: 289 ms
+			Total Elapsed time: 1524 ms
+
+			buffer_ = GC.AllocateUninitializedArray<byte>(size);
+			Elapsed time: 347 ms
+			Elapsed time: 294 ms
+			Elapsed time: 296 ms
+			Elapsed time: 298 ms
+			Elapsed time: 299 ms
+			Total Elapsed time: 1534 ms
+			*/
+			Bench(
+				() =>
+				{
+					for (int i = 0; i < 10000000; ++i)
+					{
+						byte[] buffer = new byte[1024];
+						buffer = null!;
+					}
+				}, 5
+			);
+
+			Bench(
+				() =>
+				{
+					for (int i = 0; i < 10000000; ++i)
+					{
+						byte[] buffer = GC.AllocateArray<byte>(1024);
+						buffer = null!;
+					}
+				}, 5
+			);
+
+			Bench(
+				() =>
+				{
+					for (int i = 0; i < 10000000; ++i)
+					{
+						byte[] buffer = GC.AllocateUninitializedArray<byte>(1024);
+						buffer = null!;
+					}
+				}, 5
+			);
+		}
+
+		// ptsoo todo - Array.Copy vs Buffer.BlockCopy
+
+		/// <summary>
 		/// 코드 수행 시간 측정
 		/// </summary>		
 		public delegate void fnBench_t();
@@ -601,7 +681,7 @@ namespace TSUtil
 				totalElapsedTime += elapsedTime;
 
 				// Console.WriteLine($"{desc}[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
-				//Console.WriteLine($"{desc}Elapsed time: {elapsedTime.ToString()} ms");
+				Console.WriteLine($"{desc}Elapsed time: {elapsedTime.ToString()} ms");
 
 				if (intervalMilliseconds > 0)
 					Thread.Sleep(intervalMilliseconds);
@@ -629,6 +709,61 @@ namespace TSUtil
 			Performance_Boxing();
 			Performance_Boxing2();
 			Performance_Dynamic();
+		}
+	}
+
+	/// <summary>
+	/// 로거에서 function, lineNumber 를 기록하고 싶음
+	/// 사용 방법에는 ForContext, PushProperty 두 가지가 있음
+	/// 둘 사용 방법에 따른 퍼포먼스 비교
+	/// </summary>
+	public static class LogPerformance
+	{
+		// default: 154 ms
+		// context1: 229 ms
+		// property1: 362 ms
+		// context3: 373 ms
+		// property3: 747 ms
+
+		public static void Performance_PushProperty1(string messageTemplate, [CallerMemberName] string memberName = "", [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
+		{
+			using (LogContext.PushProperty("SourceLocation", $"{memberName}({sourceLineNumber.ToString()})"))
+			{
+				Serilog.Log.Verbose(messageTemplate);
+			}
+		}
+
+		public static void Performance_ForContext1_NoFilePath(string messageTemplate, [CallerMemberName] string memberName = "", [CallerLineNumber] int sourceLineNumber = 0)
+		{
+			Serilog.Log.Logger
+				.ForContext("SourceLocation", $"{memberName}({sourceLineNumber.ToString()})")
+				.Verbose(messageTemplate);
+		}
+
+		public static void Performance_ForContext1(string messageTemplate, [CallerMemberName] string memberName = "", [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
+		{
+			Serilog.Log.Logger
+				.ForContext("SourceLocation", $"{memberName}({sourceLineNumber.ToString()})")
+				.Verbose(messageTemplate);
+		}
+
+		public static void Performance_PushProperty3(string messageTemplate, [CallerMemberName] string memberName = "", [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
+		{
+			using (LogContext.PushProperty("Func", memberName))
+			using (LogContext.PushProperty("File", sourceFilePath))
+			using (LogContext.PushProperty("Line", sourceLineNumber.ToString()))
+			{
+				Serilog.Log.Verbose(messageTemplate);
+			}
+		}
+
+		public static void Performance_ForContext3(string messageTemplate, [CallerMemberName] string memberName = "", [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
+		{
+			Serilog.Log.Logger
+				.ForContext("Func", memberName)
+				.ForContext("File", sourceFilePath)
+				.ForContext("Line", sourceLineNumber.ToString())
+				.Verbose(messageTemplate);
 		}
 	}
 }

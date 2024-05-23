@@ -3,27 +3,37 @@ using TSUtil;
 
 namespace TSNet
 {
-	public class CAcceptor_Async_TAP : CAcceptorBase
+	public class CTaskBasedAcceptService : CAcceptServiceImpl
 	{
-		private CancellationTokenSource cancellationTokenSource_ = new CancellationTokenSource();
+		CancellationToken cancellationToken_;
 
-		public CAcceptor_Async_TAP(CAcceptorConfig config, fnOnAccepted_t onAccepted)
-			: base(config, onAccepted)
-		{ }
+		public CTaskBasedAcceptService(Socket socket, fnOnAccepted_t onAccepted, CancellationTokenSource cancellationTokenSource)
+			: base(socket, onAccepted, cancellationTokenSource)
+		{
+			cancellationToken_ = cancellationToken();
+		}
 
 		protected override object? _initiate()
 		{
-			_generateIOInternalAsync().DetectThrowOnDispose();
+			_initiateInternalAsync(cancellationToken_).DetectThrowOnDispose();
 			return null;
 		}
 
-		protected async Task _generateIOInternalAsync()
+		protected override void _complete(object? result)
+		{
+			if (result is null)
+				return;
+
+			onAccepted_((Socket)result);
+		}
+
+		protected async Task _initiateInternalAsync(CancellationToken cancellationToken)
 		{
 			ArgumentNullException.ThrowIfNull(socket_);
 
 			Socket? socket = null;
 
-			while (cancellationTokenSource_.IsCancellationRequested == false)
+			while (cancellationToken.IsCancellationRequested == false)
 			{
 				try
 				{
@@ -32,15 +42,12 @@ namespace TSNet
 					// 따라서 전체를 try ~ catch 블록으로 감싸서 예외를 처리한다.
 
 					// 또한 try ~ catch 블록은 가능한 하나만 다루도록 하자. 여러 개를 사용하면 예외 식별이 흐려진다.
-					socket = await socket_
-						.AcceptAsync(cancellationTokenSource_.Token)
-						.ConfigureAwait(false)
-						;
+					socket = await socket_.AcceptAsync(cancellationToken).ConfigureAwait(false);
 				}
 				catch (SocketException exception)
 				{
 					// pass
-					SocketError errorCode = (SocketError)exception.ErrorCode;
+					SocketError errorCode = exception.SocketErrorCode;
 					if (errorCode != SocketError.ConnectionReset)
 						LOG.ERROR($"SocketException (message: {exception.Message}, errorCode: {errorCode.toInt().ToString()})");
 				}
@@ -59,7 +66,7 @@ namespace TSNet
 				catch (OperationCanceledException exception)
 				{
 					// stop
-					LOG.ERROR($"OperationCanceledException (message: {exception.Message})");
+					LOG.WARNING($"OperationCanceledException (message: {exception.Message})");
 					break;
 				}
 				catch (Exception exception)
@@ -74,23 +81,6 @@ namespace TSNet
 			}
 
 			stop();
-		}
-
-		protected override void _complete(object? result)
-		{
-			if (result is null)
-				return;
-
-			Socket socket = (Socket)result;
-			fnOnAccepted_(socket);
-		}
-
-		protected override void _stop()
-		{
-			cancellationTokenSource_.Cancel();
-
-			// socket close - 이 아래에 코드가 있으면 안됩니다.
-			base._stop();
 		}
 	}
 }

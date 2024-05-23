@@ -1,5 +1,4 @@
-﻿
-namespace TSUtil
+﻿namespace TSUtil
 {
 	public static class DataUnit
 	{

@@ -1,5 +1,4 @@
 ﻿using System.Net.Sockets;
-using TSUtil;
 
 namespace TSNet
 {
@@ -17,6 +16,7 @@ namespace TSNet
 	public struct CSocketOptionConfig
 	{
 		public bool? noDelay_ = null;
+		public bool? reuseAddress_ = null;
 
 		public int? sendTimeout_ = null;
 		public int? receiveTimeout_ = null;
@@ -31,65 +31,72 @@ namespace TSNet
 		{ }
 	}
 
-	public class CSocketOptionModifier : Singleton<CSocketOptionModifier>
+	public static class SocketOptionExtensions
 	{
-		public void configure(Socket socket, CSocketOptionConfig config)
+		public static void configureOption(this Socket socket, CSocketOptionConfig config)
 		{
-			noDelay(socket, config.noDelay_);
-
-			sendTimeout(socket, config.sendTimeout_);
-			receiveTimeout(socket, config.receiveTimeout_);
-
-			sendBufferSize(socket, config.sendBufferSize_);
-			receiveBufferSize(socket, config.receiveBufferSize_);
-
-			linger(socket, config.lingerOption_);
-			keepAlive(socket, config.keepAliveOption_);
+			socket
+				.noDelay(config.noDelay_)
+				.reuseAddress(config.reuseAddress_)
+				.sendTimeout(config.sendTimeout_)
+				.receiveTimeout(config.receiveTimeout_)
+				.sendBufferSize(config.sendBufferSize_)
+				.receiveBufferSize(config.receiveBufferSize_)
+				.linger(config.lingerOption_)
+				.keepAlive(config.keepAliveOption_)
+				;
 		}
 
-		public CSocketOptionModifier noDelay(Socket socket, bool? flag)
+		public static Socket noDelay(this Socket socket, bool? flag)
 		{
 			if (flag != null)
 				socket.NoDelay = (bool)flag;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier sendTimeout(Socket socket, int? timeout)
+		public static Socket reuseAddress(this Socket socket, bool? flag)
+		{
+			if (flag != null)
+				socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, (bool)flag);
+			return socket;
+		}
+
+		public static Socket sendTimeout(this Socket socket, int? timeout)
 		{
 			if (timeout != null)
 				socket.SendTimeout = (int)timeout;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier receiveTimeout(Socket socket, int? timeout)
+		public static Socket receiveTimeout(this Socket socket, int? timeout)
 		{
 			if (timeout != null)
 				socket.ReceiveTimeout = (int)timeout;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier sendBufferSize(Socket socket, int? bufferSize)
+		public static Socket sendBufferSize(this Socket socket, int? bufferSize)
 		{
 			if (bufferSize != null)
 				socket.SendBufferSize = (int)bufferSize;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier receiveBufferSize(Socket socket, int? bufferSize)
+		public static Socket receiveBufferSize(this Socket socket, int? bufferSize)
 		{
 			if (bufferSize != null)
 				socket.ReceiveBufferSize = (int)bufferSize;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier linger(Socket socket, LingerOption? option)
+		public static Socket linger(this Socket socket, LingerOption? option)
 		{
 			if (option != null)
 				socket.LingerState = option;
-			return this;
+			return socket;
 		}
 
-		public CSocketOptionModifier keepAlive(Socket socket, KeepAliveOption? option)
+		public static Socket keepAlive(this Socket socket, KeepAliveOption? option)
 		{
 			if (option != null)
 			{
@@ -103,7 +110,7 @@ namespace TSNet
 					socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, unwrappedOption.keepAliveRetryCount_);
 				}
 			}
-			return this;
+			return socket;
 		}
 	}
 }

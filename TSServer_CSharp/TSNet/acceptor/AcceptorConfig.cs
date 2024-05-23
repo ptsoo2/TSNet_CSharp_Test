@@ -4,10 +4,21 @@ namespace TSNet
 {
 	public class CAcceptorConfig
 	{
-		public string ip { get; set; } = IPAddress.Any.ToString();
-		public int port { get; set; } = 0;
-		public int backlog { get; set; } = int.MaxValue;
+		/// <summary>
+		/// 소켓 설정
+		/// </summary>
+		public CSocketOptionConfig socketOption_;
 
-		public IPEndPoint? ipEndPoint() => AddressHelper.makeIPEndPoint(ip, port);
+		/// <summary>
+		/// 개방할 IP와 포트
+		/// </summary>
+		public string ip_ { get; set; } = IPAddress.Any.ToString();
+		public int port_ { get; set; } = 0;
+		public IPEndPoint? ipEndPoint() => AddressHelper.makeIPEndPoint(ip_, port_);
+
+		/// <summary>
+		/// 대기열 크기
+		/// </summary>
+		public int backlog_ { get; set; } = int.MaxValue;
 	}
 }

@@ -4,50 +4,51 @@ using TSUtil;
 
 namespace TSNet
 {
-	public abstract class CAcceptorBase : Operation
+	public class CAcceptor<TAcceptService>
+		where TAcceptService : CAcceptServiceImpl
 	{
-		protected CAcceptorConfig config_ { get; }
-		protected Socket socket_ { get; private set; }
-		protected fnOnAccepted_t fnOnAccepted_;
-
 		private CSharedCounter_Bool isClosed_ { get; } = new(false);
 
-		public CAcceptorBase(CAcceptorConfig config, fnOnAccepted_t onAccepted)
+		protected CAcceptorConfig config_ { get; }
+		protected Socket socket_ { get; private set; }
+		protected CAcceptServiceImpl impl_;
+
+		public CAcceptor(CAcceptorConfig config, fnOnAccepted_t onAccepted)
 		{
 			config_ = config;
-			fnOnAccepted_ += onAccepted;
 
 			IPEndPoint? ipEndPoint = config_.ipEndPoint();
 			ArgumentNullException.ThrowIfNull(ipEndPoint, "Failed to make endPoint");
 
 			// socket 생성
 			socket_ = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			socket_.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); // ptsoo todo - 옵션으로 빼자
+			socket_.configureOption(config.socketOption_);
+
 			socket_.Bind(ipEndPoint);
+
+			// Impl stop => Acceptor stop 의 순서를 맞춰주기 위해 등록 후 넘겨준다.
+			// Cancel 콜 시점에 등록의 역순으로 호출된다.
+			CancellationTokenSource cancellationTokenSource = new();
+			cancellationTokenSource.Token.Register(new Action(_stop));
+
+			impl_ = CAcceptServiceFactory.create<TAcceptService>(socket_, onAccepted, cancellationTokenSource)!;
 		}
 
 		public void start()
 		{
 			ArgumentNullException.ThrowIfNull(socket_, "Socket is null");
-
-			socket_.Listen(config_.backlog);
 			LOG.INFO($"Started acceptor(endPoint: {config_.ipEndPoint()}, socket: {socket_.Handle.ToString()})");
 
-			_runOnce();
+			socket_.Listen(config_.backlog_);
+			impl_.start();
 		}
 
 		public void stop()
 		{
-			if (isClosed_.compareExchange(true, false) == true)
-			{
-				LOG.WARNING("Already closed acceptor");
-				return;
-			}
-
-			_stop();
+			impl_.stop();
 		}
 
-		protected virtual void _stop()
+		protected void _stop()
 		{
 			try
 			{

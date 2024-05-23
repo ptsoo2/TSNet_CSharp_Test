@@ -1,5 +1,4 @@
-﻿
-namespace ThreadType
+﻿namespace ThreadType
 {
 	/// <summary>
 	/// ThreadType 으로 value generic 을 사용하기 위함.

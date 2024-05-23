@@ -3,12 +3,12 @@ using TSUtil;
 
 namespace TSNet
 {
-	public class CAcceptor_Async_APM : CAcceptorBase
+	public class CAPMBasedAcceptService : CAcceptServiceImpl
 	{
 		protected AsyncCallback callbackAccepted_;
 
-		public CAcceptor_Async_APM(CAcceptorConfig config, fnOnAccepted_t onAccepted)
-			: base(config, onAccepted)
+		public CAPMBasedAcceptService(Socket socket, fnOnAccepted_t onAccepted, CancellationTokenSource cancellationTokenSource)
+			: base(socket, onAccepted, cancellationTokenSource)
 		{
 			callbackAccepted_ = new AsyncCallback(_complete);
 		}
@@ -53,7 +53,9 @@ namespace TSNet
 			}
 			catch (SocketException exception)
 			{
-				LOG.ERROR($"[Listen] SocketException!!(message: {exception.Message}, errorCode: {exception.ErrorCode.ToString()})");
+				SocketError errorCode = exception.SocketErrorCode;
+				if (errorCode != SocketError.ConnectionReset)
+					LOG.ERROR($"[Listen] SocketException!!(message: {exception.Message}, errorCode: {exception.ErrorCode.ToString()})");
 				return;
 			}
 			catch (Exception exception)
@@ -62,10 +64,8 @@ namespace TSNet
 				return;
 			}
 
-			if (socket == null)
-				return;
-
-			fnOnAccepted_(socket);
+			if (socket != null)
+				onAccepted_(socket);
 		}
 	}
 }

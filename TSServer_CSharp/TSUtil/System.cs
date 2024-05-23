@@ -1,11 +1,10 @@
-﻿
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace TSUtil
 {
 	public class CSystem
 	{
-		public static double GetCpuUsageForProcess(Process process, int delay = 500)
+		public static double getCpuUsageForProcess(Process process, int delay = 500)
 		{
 			var startTime = DateTime.UtcNow;
 			var startCpuUsage = process.TotalProcessorTime;
