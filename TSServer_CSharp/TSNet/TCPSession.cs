@@ -1,5 +1,4 @@
 ﻿using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using TSUtil;
 
 namespace TSNet
@@ -8,84 +7,42 @@ namespace TSNet
 	{
 		public long handle => (socket_?.Handle.ToInt64() ?? -1);
 
-		protected Socket socket_ = null!;
-		protected CMessageBuffer messageBuffer_ = null!;
+		protected Socket? socket_ = null;
+		protected CSocketReceiveOperationBase? receiveOperation_ = null;
 
-		public void start(Socket socket, int bufferSize)
+		public event fnOnReceived_t fnOnReceived
 		{
-			messageBuffer_ = new CMessageBuffer(bufferSize, bufferSize);
-
-			socket_ = socket;
-			LOG.INFO($"Started Session(socket: {handle.ToString()})");
-
-			_beginRecv().DetectThrowOnDispose();
-		}
-
-		protected async Task _beginRecv()
-		{
-			while (true)
+			add
 			{
-				ArraySegment<byte> writableBuffer = messageBuffer_.getWritableBuffer();
-				if (writableBuffer.isEmpty() == true)
-				{
-					LOG.ERROR($"Recv buffer full!!(socket: {handle.ToString()}");
-					_close();
-					return;
-				}
-
-				int recvSize = 0;
-				try
-				{
-					recvSize = await socket_?.ReceiveAsync(writableBuffer, SocketFlags.None)!;
-				}
-				catch (Exception exception)
-				{
-					LOG.ERROR($"Exception!!(error: {exception.Message}, socket: {handle.ToString()}");
-					_close();
-					return;
-				}
-
-				_endRecv(recvSize);
+				ArgumentNullException.ThrowIfNull(receiveOperation_);
+				receiveOperation_.fnOnReceived += value;
+			}
+			remove
+			{
+				ArgumentNullException.ThrowIfNull(receiveOperation_);
+				receiveOperation_.fnOnReceived -= value;
 			}
 		}
 
-		protected void _endRecv(int size)
+		public void start(Socket? socket, int bufferSize)
 		{
-			if (size < 1)
+			if (socket.isValid() == false)
 			{
-				LOG.ERROR($"Size is zero!!(socket: {handle.ToString()}, size: {size.ToString()})");
-				_close();
+				socket?.Dispose();
 				return;
 			}
 
-			messageBuffer_.onWriteEnd(size);
+			// 멤버 세팅
+			socket_ = socket;
 
-			while (true)
-			{
-				ReadOnlySpan<byte> readableBuffer = messageBuffer_.getReadableBuffer();
-				if (readableBuffer.isEmpty() == true)
-					break;
+			// Operation close => Acceptor close 의 순서를 맞춰주기 위해 선 등록 해준다.
+			// Cancel 콜 시점에 등록의 역순으로 호출된다.
+			receiveOperation_ = new CSocketTaskBasedReceiveOperation(socket_!, bufferSize);
+			// receiveOperation_ = new CSocketSyncReceiveOperation(socket_!, bufferSize);
+			receiveOperation_.cancellationToken().Register(new Action(this._close));
 
-				if (readableBuffer.Length < MessageHeader.PACKET_HEADER_LENGTH)
-					break;
-
-				MessageHeader header = MemoryMarshal.Read<MessageHeader>(readableBuffer);
-				if (readableBuffer.Length < header.length_)
-					break;
-
-				// 읽을 수 있는 만큼으로 줄여주고,
-				readableBuffer = readableBuffer.Slice(0, header.length_);
-
-				messageBuffer_.onPreReadEnd(readableBuffer.Length);
-
-				{
-					TestMessage message = new TestMessage();
-					message.readFrom(ref readableBuffer);
-					// LOG.DEBUG($"message: `{message.message ?? "unknown"}`, size: {readableBuffer.Length.ToString()}");
-				}
-
-				messageBuffer_.onReadEnd(readableBuffer.Length);
-			}
+			// recv 시작
+			receiveOperation_.run();
 		}
 
 		protected void _close()

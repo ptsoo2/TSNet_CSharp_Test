@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\TSServer_CSharp\TSNet\1_TSNet.csproj" />
+    <ProjectReference Include="..\..\TSServer_CSharp\TSServerCommon\2_TSServerCommon.csproj" />
     <ProjectReference Include="..\..\TSServer_CSharp\TSUtil\0_TSUtil.csproj" />
   </ItemGroup>
 

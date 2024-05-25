@@ -1,10 +1,12 @@
 ﻿namespace TSNet
 {
 	/// <summary>
-	/// RecvBuffer
+	/// ReceiveBuffer
 	/// </summary>
 	public class CMessageBuffer
 	{
+		public int bufferMaxLength => buffer_.Length;
+
 		private byte[] buffer_;
 		private byte[] subBuffer_;
 
@@ -21,6 +23,9 @@
 		public CMessageBuffer(int mainBufferSize, int subBufferSize)
 		{
 			// ptsoo todo - pin flag 조정을 하면서 퍼포먼스 테스트해볼 것
+			// SOH, LOH 에 따른 성능 저하 포인트도 확인해보기
+			// 자주 할당, 해제가 반복될 수 있는 것의 멤버로 붙여두지 않고,
+			// 별도의 POH 영역으로 분리하고, attach 하여 사용하는 방식으로 격리해야할까?
 			buffer_ = GC.AllocateUninitializedArray<byte>(mainBufferSize);
 			subBuffer_ = GC.AllocateUninitializedArray<byte>(subBufferSize);
 		}
@@ -36,7 +41,7 @@
 			}
 
 			// 넘으면 앞으로 돌림
-			return (newOffset - (buffer_.Length - 1)) - 1;
+			return newOffset - (buffer_.Length - 1) - 1;
 		}
 
 		protected int _increaseCycleCount(int preWriteCycleCount, int preOffset, int size)
@@ -97,7 +102,7 @@
 			int readCycleCount = readCycleCount_;
 
 			int writableSize = (writeCycleCount == readCycleCount)
-				? (buffer_.Length - writeOffset)
+				? ((buffer_.Length - 1) - writeOffset + 1)
 				: (readOffset - writeOffset);
 
 			return new ArraySegment<byte>(buffer_, writeOffset, writableSize);

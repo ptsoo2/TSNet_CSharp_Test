@@ -4,19 +4,26 @@ using ThreadType;
 
 namespace TSUtil
 {
-	public struct PerformanceEvent
+	/// <summary>
+	/// 퍼포먼스 스냅샷 기록값
+	/// </summary>
+	public struct PerformanceSnapshot
 	{
-		public ulong eventId_ = 0;
+		public ulong id_ = 0;
 
-		public ulong nowCount_ = 0;
+		// 누적
 		public ulong totalCount_ = 0;
-		public ulong avgCount_ => (eventId_ < 1) ? 0 : (totalCount_ / eventId_);
+
+		// 단위 시간당
+		public ulong nowCount_ = 0;
+		public ulong avgCount_ => (id_ < 1) ? 0 : (totalCount_ / id_);
+		public ulong estimatedMaxCount_ = 0;
 
 		public long totalElapsedMilliseconds_ = 0;
 
-		public PerformanceEvent(ulong eventId)
+		public PerformanceSnapshot(ulong snapshotId)
 		{
-			eventId_ = eventId;
+			id_ = snapshotId;
 		}
 	}
 
@@ -32,6 +39,8 @@ namespace TSUtil
 		/// <summary>
 		/// not thread safety
 		/// </summary>
+		protected ICounter<ulong> estimatedMaxCounter_ = CounterFactory.create<ulong, T>()!;
+
 		protected Stopwatch watch_ = new();
 		protected long totalElapsedMilliseconds_ = 0;
 		protected ICounter<ulong> captureCounter_ = CounterFactory.create<ulong, ThreadType.Single>()!;
@@ -46,7 +55,7 @@ namespace TSUtil
 		/// <summary>
 		/// not thread safety
 		/// </summary>
-		public bool capture(long criteriaElapsedTime, out PerformanceEvent outProperties)
+		public bool capture(long criteriaElapsedTime, out PerformanceSnapshot outProperties)
 		{
 			// 실행중이 아니라면 시작
 			if (watch_.IsRunning == false)
@@ -65,12 +74,22 @@ namespace TSUtil
 
 				var totalCaptureCount = captureCounter_.increment();
 				{
-					outProperties = new PerformanceEvent(totalCaptureCount)
+					outProperties = new PerformanceSnapshot(totalCaptureCount)
 					{
-						nowCount_ = nowCount,
 						totalCount_ = totalCount,
+						nowCount_ = nowCount,
 						totalElapsedMilliseconds_ = totalElapsedMilliseconds_
 					};
+
+					// max 갱신
+					outProperties.estimatedMaxCount_ = estimatedMaxCounter_.value;
+					if (outProperties.nowCount_ > outProperties.estimatedMaxCount_)
+					{
+						// not thread safety
+						outProperties.estimatedMaxCount_
+							= estimatedMaxCounter_.value
+							= outProperties.nowCount_;
+					}
 				}
 			}
 

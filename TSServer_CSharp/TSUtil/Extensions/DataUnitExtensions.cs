@@ -1,28 +1,34 @@
 ﻿
 namespace TSUtil
 {
+	/// <summary>
+	/// 데이터 단위 변환 관련 Extension method
+	/// </summary>
 	public static class DataUnitExtensions
 	{
-		// data unit
 		public static long BYTE_TO_KILLOBYTE(this long value)
 		{
-			return DataUnit.BYTE_TO_KILLOBYTE(value);
+			return (value / 1000);
 		}
+
 		public static long KILLOBYTE_TO_MEGABYTE(this long value)
 		{
-			return DataUnit.KILLOBYTE_TO_MEGABYTE(value);
+			return (value / 1000);
 		}
+
 		public static long MEGABYTE_TO_GIGABYTE(this long value)
 		{
-			return DataUnit.MEGABYTE_TO_GIGABYTE(value);
+			return (value / 1000);
 		}
+
 		public static long BYTE_TO_MEGABYTE(this long value)
 		{
-			return DataUnit.BYTE_TO_MEGABYTE(value);
+			return value.BYTE_TO_KILLOBYTE().KILLOBYTE_TO_MEGABYTE();
 		}
+
 		public static long BYTE_TO_GIGABYTE(this long value)
 		{
-			return DataUnit.BYTE_TO_GIGABYTE(value);
+			return value.BYTE_TO_KILLOBYTE().KILLOBYTE_TO_MEGABYTE().MEGABYTE_TO_GIGABYTE();
 		}
 	}
 }

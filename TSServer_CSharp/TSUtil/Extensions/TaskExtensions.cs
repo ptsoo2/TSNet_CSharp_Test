@@ -1,6 +1,8 @@
-﻿
-namespace TSUtil
+﻿namespace TSUtil
 {
+	/// <summary>
+	/// Task 관련 Extension method
+	/// </summary>
 	public static class TaskExtensions
 	{
 		public static void DoNothing(this Task task)

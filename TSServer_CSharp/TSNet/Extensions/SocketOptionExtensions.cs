@@ -2,35 +2,6 @@
 
 namespace TSNet
 {
-	public struct KeepAliveOption
-	{
-		public bool isEnabled_ = false;
-		public int keepAliveTime_ = 0;
-		public int keepAliveInterval_ = 0;
-		public int keepAliveRetryCount_ = 0;
-
-		public KeepAliveOption()
-		{ }
-	}
-
-	public struct CSocketOptionConfig
-	{
-		public bool? noDelay_ = null;
-		public bool? reuseAddress_ = null;
-
-		public int? sendTimeout_ = null;
-		public int? receiveTimeout_ = null;
-
-		public int? sendBufferSize_ = null;
-		public int? receiveBufferSize_ = null;
-
-		public LingerOption? lingerOption_ = null;
-		public KeepAliveOption? keepAliveOption_ = null;
-
-		public CSocketOptionConfig()
-		{ }
-	}
-
 	public static class SocketOptionExtensions
 	{
 		public static void configureOption(this Socket socket, CSocketOptionConfig config)

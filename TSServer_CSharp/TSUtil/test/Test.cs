@@ -657,6 +657,71 @@ namespace TSUtil
 			);
 		}
 
+		/// <summary>
+		/// Dictionary 순회 방법에 따른 비교
+		/// </summary>
+		public static void Performance_Foreach_Dictionary()
+		{
+			Dictionary<string, object> dict = new();
+			IDictionary<string, object> dict2 = dict;
+			for (int i = 0; i < 10000000; ++i)
+			{
+				string a = i.ToString();
+				dict.Add(a, a);
+			}
+
+			// HAA0401: 값 형식이 아닌 것을 순회하는 것은 힙 할당을 유발함 경고가 떠서 확인해봄.
+			// Tuple 보다 KeyValuePair 이 더 빠름. 무시해도되는 경고로 보임.
+			// Total Elapsed time: 692 ms
+			// Total Elapsed time: 597 ms
+			// Total Elapsed time: 887 ms
+			// Total Elapsed time: 763 ms
+
+			Bench(
+				() =>
+				{
+					foreach (var (key, value) in dict)
+					{
+						string key1 = key;
+						object value1 = value;
+					}
+				}, 5
+			);
+
+			Bench(
+				() =>
+				{
+					foreach (var item in dict)
+					{
+						string key = item.Key;
+						object value = item.Value;
+					}
+				}, 5
+			);
+
+			Bench(
+				() =>
+				{
+					foreach (var (key, value) in dict2)
+					{
+						string key1 = key;
+						object value1 = value;
+					}
+				}, 5
+			);
+
+			Bench(
+				() =>
+				{
+					foreach (var item in dict2)
+					{
+						string key = item.Key;
+						object value = item.Value;
+					}
+				}, 5
+			);
+		}
+
 		// ptsoo todo - Array.Copy vs Buffer.BlockCopy
 
 		/// <summary>
@@ -681,7 +746,7 @@ namespace TSUtil
 				totalElapsedTime += elapsedTime;
 
 				// Console.WriteLine($"{desc}[{(i + 1).ToString()}] Elapsed time: {elapsedTime.ToString()} ms");
-				Console.WriteLine($"{desc}Elapsed time: {elapsedTime.ToString()} ms");
+				// Console.WriteLine($"{desc}Elapsed time: {elapsedTime.ToString()} ms");
 
 				if (intervalMilliseconds > 0)
 					Thread.Sleep(intervalMilliseconds);

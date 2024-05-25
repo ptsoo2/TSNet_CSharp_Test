@@ -6,17 +6,18 @@ namespace TSNet
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct MessageHeader
 	{
-		public static readonly ushort PACKET_HEADER_LENGTH = (ushort)Marshal.SizeOf<MessageHeader>();
+		public static readonly ushort MESSAGE_HEADER_LENGTH = (ushort)Marshal.SizeOf<MessageHeader>();
 
 		public readonly ushort length_;
-		// ptsoo todo type
+		public readonly ushort type_;
 
-		public MessageHeader(int length)
+		public MessageHeader(int length, ushort type)
 		{
 			if (length_ > ushort.MaxValue)
 				throw new ArgumentOutOfRangeException($"length is too large(length: {length.ToString()})");
 
 			length_ = (ushort)length;
+			type_ = type;
 		}
 	}
 
@@ -32,7 +33,7 @@ namespace TSNet
 		public TestMessage() { }
 		public TestMessage(string message)
 		{
-			header_ = new MessageHeader(MessageHeader.PACKET_HEADER_LENGTH + message.Length);
+			header_ = new MessageHeader(MessageHeader.MESSAGE_HEADER_LENGTH + message.Length, 0);
 			message_ = Encoding.UTF8.GetBytes(message, 0, message.Length);
 		}
 
@@ -41,7 +42,7 @@ namespace TSNet
 			outBuffer = new byte[header_.length_];
 
 			MemoryMarshal.Write(outBuffer.AsSpan<byte>(), header_);
-			message_.AsSpan().CopyTo(outBuffer.AsSpan<byte>(MessageHeader.PACKET_HEADER_LENGTH));
+			message_.AsSpan().CopyTo(outBuffer.AsSpan<byte>(MessageHeader.MESSAGE_HEADER_LENGTH));
 
 			return outBuffer.AsSpan<byte>();
 		}
@@ -50,8 +51,8 @@ namespace TSNet
 		{
 			header_ = MemoryMarshal.Read<MessageHeader>(fromBuffer);
 
-			message_ = new byte[header_.length_ - MessageHeader.PACKET_HEADER_LENGTH];
-			fromBuffer.Slice(MessageHeader.PACKET_HEADER_LENGTH, message_.Length).CopyTo(message_);
+			message_ = new byte[header_.length_ - MessageHeader.MESSAGE_HEADER_LENGTH];
+			fromBuffer.Slice(MessageHeader.MESSAGE_HEADER_LENGTH, message_.Length).CopyTo(message_);
 		}
 	}
 }

@@ -1,13 +1,17 @@
 ﻿using System.Net.Sockets;
 using TSUtil;
+using static TSNet.CSocketEventBasedAcceptOperation;
 
 namespace TSNet
 {
-	public class CEventBasedAcceptService : CAcceptServiceImpl
+	/// <summary>
+	/// EAP(Event) 기반 Accept 동작
+	/// </summary>
+	public class CSocketEventBasedAcceptOperation : CSocketAcceptOperationBase, IAsyncOperation<AcceptSocketAsyncEventArgs?>
 	{
 		public class AcceptSocketAsyncEventArgs : SocketAsyncEventArgs
 		{
-			public bool failed() => (SocketError != SocketError.Success);
+			public bool failed => (SocketError != SocketError.Success);
 
 			public Socket? popSocket()
 			{
@@ -27,28 +31,34 @@ namespace TSNet
 		protected AcceptSocketAsyncEventArgs acceptEventArgs_;
 		protected EventHandler<SocketAsyncEventArgs> eventHandler_;
 
-		public CEventBasedAcceptService(Socket socket, fnOnAccepted_t onAccepted, CancellationTokenSource cancellationTokenSource)
-			: base(socket, onAccepted, cancellationTokenSource)
+		public CSocketEventBasedAcceptOperation(Socket socket, fnOnAccepted_t onAccepted)
+			: base(socket, onAccepted)
 		{
 			// eventArgs 매핑
 			acceptEventArgs_ = new();
 			eventHandler_ = (object? sender, SocketAsyncEventArgs acceptEventArgs) =>
 			{
-				_complete((AcceptSocketAsyncEventArgs)acceptEventArgs);
+				complete((AcceptSocketAsyncEventArgs)acceptEventArgs);
 			};
 			acceptEventArgs_.Completed += eventHandler_;
 		}
 
-		public override void stop()
+		public override void close()
 		{
 			acceptEventArgs_.Completed -= eventHandler_;
 			acceptEventArgs_.Dispose();
 
 			// 이 아래에 코드가 있으면 안된다.
-			base.stop();
+			base.close();
 		}
 
-		protected override object? _initiate()
+		public override void run()
+		{
+			AcceptSocketAsyncEventArgs? result = initiate();
+			complete(result);
+		}
+
+		public AcceptSocketAsyncEventArgs? initiate()
 		{
 			Socket socket = socket_;
 			AcceptSocketAsyncEventArgs acceptEventArgs = acceptEventArgs_;
@@ -62,25 +72,25 @@ namespace TSNet
 			catch (ObjectDisposedException)
 			{
 				// 종료된 경우 나올 수 있음
-				stop();
+				close();
 				return null;
 			}
 			catch (NullReferenceException)
 			{
 				// 종료된 경우 나올 수 있음
-				stop();
+				close();
 				return null;
 			}
 			catch (SocketException exception)
 			{
 				LOG.ERROR($"SocketException!!(message: {exception.Message}, errorCode: {exception.ErrorCode.ToString()})");
-				stop();
+				close();
 				return null;
 			}
 			catch (Exception exception)
 			{
 				LOG.ERROR($"Exception!!(message: {exception.ToString()})");
-				stop();
+				close();
 				return null;
 			}
 
@@ -91,7 +101,7 @@ namespace TSNet
 			return acceptEventArgs_;
 		}
 
-		protected override void _complete(object? result)
+		public void complete(AcceptSocketAsyncEventArgs? result)
 		{
 			if (result == null)
 				return;
@@ -99,30 +109,21 @@ namespace TSNet
 			if (result is null)
 				return;
 
-			AcceptSocketAsyncEventArgs acceptArgs = (AcceptSocketAsyncEventArgs)result;
-			Socket? acceptSocket = acceptArgs.popSocket();
+			Socket? acceptSocket = result.popSocket();
 
-			if (acceptArgs.failed() == true)
+			if (result.failed == true)
 			{
-				bool isListenSocketError = false;
-				if (isListenSocketError == true)
-				{
-					// onErrorServer
-					// do stop!!
-					stop();
-					return;
-				}
-
-				// onErrorClient
-				SocketError error = acceptArgs.SocketError;
-				LOG.DEBUG($"SocketException!!(errorCode: {error.toInt().ToString()}, message: {error.ToString()})");
+				// pass
+				SocketError errorCode = result.SocketError;
+				if (errorCode != SocketError.ConnectionReset)
+					LOG.ERROR($"SocketException (errorCode: {errorCode.toInt().ToString()}, message: {errorCode.ToString()})");
 			}
 			else if (acceptSocket != null)
 			{
-				onAccepted_(acceptSocket);
+				fnOnAccepted_(acceptSocket);
 			}
 
-			_runOnce();
+			run();
 		}
 	}
 }

@@ -17,7 +17,11 @@
           "restrictedToMinimumLevel": "Verbose",
           // "outputTemplate": "{{\"dt\":\"{Timestamp:yyyy-MM-dd HH:mm:ss.fff}\",\"lv\":\"{Level:u11}\",\"wh\":\"{SourceLoc}\",\"ct\":\"{Message}\"}}{NewLine}{Exception}",
           "outputTemplate": "{{\"dt\":\"{Timestamp:yyyy-MM-dd HH:mm:ss.fff}\",\"lv\":\"{Level:u11}\",\"wh\":\"{SourceLoc}\",\"tid\":\"{ThreadId}\",\"ct\":\"{Message}\"}}{NewLine}{Exception}",
-          "path": "Logs/log.txt"
+          "path": "../log/{timestamp}.log"
+          // "rollingInterval": "Day",
+          // "fileSizeLimitBytes": 1073741824, // 1 GB
+          // "retainedFileCountLimit": 1,
+          // "rollOnFileSizeLimit": true
         }
       }
     ],
@@ -39,10 +43,9 @@
         "Name": "ToMaximumCollectionCount",
         "Args": { "maximumCollectionCount": 10 }
       }
-    ]
-    // ,
-    //"Properties": {
-    //  "Application": "Sample"
-    //}
+    ],
+    "Properties": {
+      "Application": "Sample"
+    }
   }
 }

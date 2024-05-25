@@ -4,14 +4,14 @@ using TSUtil;
 
 namespace TSNet
 {
-	public class CAcceptor<TAcceptService>
-		where TAcceptService : CAcceptServiceImpl
+	public class CAcceptor<TAcceptOperation>
+		where TAcceptOperation : CSocketAcceptOperationBase
 	{
 		private CSharedCounter_Bool isClosed_ { get; } = new(false);
 
 		protected CAcceptorConfig config_ { get; }
 		protected Socket socket_ { get; private set; }
-		protected CAcceptServiceImpl impl_;
+		protected CSocketAcceptOperationBase acceptOperation_;
 
 		public CAcceptor(CAcceptorConfig config, fnOnAccepted_t onAccepted)
 		{
@@ -26,12 +26,10 @@ namespace TSNet
 
 			socket_.Bind(ipEndPoint);
 
-			// Impl stop => Acceptor stop 의 순서를 맞춰주기 위해 등록 후 넘겨준다.
+			// Operation close => Acceptor close 의 순서를 맞춰주기 위해 선 등록 해준다.
 			// Cancel 콜 시점에 등록의 역순으로 호출된다.
-			CancellationTokenSource cancellationTokenSource = new();
-			cancellationTokenSource.Token.Register(new Action(_stop));
-
-			impl_ = CAcceptServiceFactory.create<TAcceptService>(socket_, onAccepted, cancellationTokenSource)!;
+			acceptOperation_ = CAcceptOperationFactory.create<TAcceptOperation>(socket_, onAccepted)!;
+			acceptOperation_.cancellationToken().Register(new Action(this._close));
 		}
 
 		public void start()
@@ -40,15 +38,15 @@ namespace TSNet
 			LOG.INFO($"Started acceptor(endPoint: {config_.ipEndPoint()}, socket: {socket_.Handle.ToString()})");
 
 			socket_.Listen(config_.backlog_);
-			impl_.start();
+			acceptOperation_.run();
 		}
 
-		public void stop()
+		public void close()
 		{
-			impl_.stop();
+			acceptOperation_.close();
 		}
 
-		protected void _stop()
+		protected void _close()
 		{
 			try
 			{

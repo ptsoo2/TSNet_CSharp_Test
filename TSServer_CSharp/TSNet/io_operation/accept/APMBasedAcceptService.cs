@@ -3,17 +3,26 @@ using TSUtil;
 
 namespace TSNet
 {
-	public class CAPMBasedAcceptService : CAcceptServiceImpl
+	/// <summary>
+	/// APM 기반 Accept 동작
+	/// </summary>
+	public class CSocketAPMBasedAcceptOperation : CSocketAcceptOperationBase, IAsyncOperation<IAsyncResult?>
 	{
 		protected AsyncCallback callbackAccepted_;
 
-		public CAPMBasedAcceptService(Socket socket, fnOnAccepted_t onAccepted, CancellationTokenSource cancellationTokenSource)
-			: base(socket, onAccepted, cancellationTokenSource)
+		public CSocketAPMBasedAcceptOperation(Socket socket, fnOnAccepted_t onAccepted)
+			: base(socket, onAccepted)
 		{
-			callbackAccepted_ = new AsyncCallback(_complete);
+			callbackAccepted_ = new AsyncCallback(complete);
 		}
 
-		protected override object? _initiate()
+		public override void run()
+		{
+			IAsyncResult? result = initiate();
+			complete(result);
+		}
+
+		public IAsyncResult? initiate()
 		{
 			IAsyncResult? result = null;
 			try
@@ -35,13 +44,13 @@ namespace TSNet
 			return result;
 		}
 
-		protected override void _complete(object? result)
+		public void complete(IAsyncResult? result)
 		{
 			if (result is null)
 				return;
 
-			_onCompletionIOInternal((IAsyncResult)result);
-			_runOnce();
+			_onCompletionIOInternal(result);
+			run();
 		}
 
 		protected void _onCompletionIOInternal(IAsyncResult result)
@@ -65,7 +74,7 @@ namespace TSNet
 			}
 
 			if (socket != null)
-				onAccepted_(socket);
+				fnOnAccepted_(socket);
 		}
 	}
 }

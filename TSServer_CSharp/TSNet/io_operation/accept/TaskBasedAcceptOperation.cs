@@ -3,28 +3,37 @@ using TSUtil;
 
 namespace TSNet
 {
-	public class CTaskBasedAcceptService : CAcceptServiceImpl
+	/// <summary>
+	/// Task 기반 Accept 동작
+	/// </summary>
+	public class CSocketTaskBasedAcceptOperation : CSocketAcceptOperationBase, IAsyncOperation<Socket?>
 	{
-		CancellationToken cancellationToken_;
+		protected readonly CancellationToken cancellationToken_;
 
-		public CTaskBasedAcceptService(Socket socket, fnOnAccepted_t onAccepted, CancellationTokenSource cancellationTokenSource)
-			: base(socket, onAccepted, cancellationTokenSource)
+		public CSocketTaskBasedAcceptOperation(Socket socket, fnOnAccepted_t onAccepted)
+			: base(socket, onAccepted)
 		{
 			cancellationToken_ = cancellationToken();
 		}
 
-		protected override object? _initiate()
+		public override void run()
+		{
+			Socket? socket = initiate();
+			complete(socket);
+		}
+
+		public Socket? initiate()
 		{
 			_initiateInternalAsync(cancellationToken_).DetectThrowOnDispose();
 			return null;
 		}
 
-		protected override void _complete(object? result)
+		public void complete(Socket? result)
 		{
 			if (result is null)
 				return;
 
-			onAccepted_((Socket)result);
+			fnOnAccepted_(result);
 		}
 
 		protected async Task _initiateInternalAsync(CancellationToken cancellationToken)
@@ -76,11 +85,11 @@ namespace TSNet
 					break;
 				}
 
-				_complete(socket);
+				complete(socket);
 				socket = null;
 			}
 
-			stop();
+			close();
 		}
 	}
 }

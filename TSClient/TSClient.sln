@@ -16,6 +16,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "1_TSNet", "..\TSServer_CSha
 		{607B57BF-BE71-4623-8EEB-D4BF09D0EA79} = {607B57BF-BE71-4623-8EEB-D4BF09D0EA79}
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "2_TSServerCommon", "..\TSServer_CSharp\TSServerCommon\2_TSServerCommon.csproj", "{FC936662-CAC3-4C48-A725-57AC9626859D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +50,14 @@ Global
 		{F09D55A6-41AE-4816-87BE-53A82DE81B63}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F09D55A6-41AE-4816-87BE-53A82DE81B63}.Release|x64.ActiveCfg = Release|x64
 		{F09D55A6-41AE-4816-87BE-53A82DE81B63}.Release|x64.Build.0 = Release|x64
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Debug|x64.Build.0 = Debug|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Release|x64.ActiveCfg = Release|Any CPU
+		{FC936662-CAC3-4C48-A725-57AC9626859D}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

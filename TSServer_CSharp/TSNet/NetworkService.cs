@@ -2,7 +2,10 @@
 
 namespace TSNet
 {
-	using CAcceptor = CAcceptor<CTaskBasedAcceptService>;
+	using CAcceptor = CAcceptor<CSocketTaskBasedAcceptOperation>;
+	// using CAcceptor = CAcceptor<CSocketSyncAcceptOperation>;
+	// using CAcceptor = CAcceptor<CSocketAPMBasedAcceptOperation>;
+	// using CAcceptor = CAcceptor<CSocketEventBasedAcceptOperation>;
 
 	public class CNetworkService : Singleton<CNetworkService>
 	{
@@ -13,7 +16,7 @@ namespace TSNet
 
 		public CNetworkService init()
 		{
-			LOG.init("loggersettings.json");
+			LOG.init("../cfg/loggersettings_default.json");
 			return this;
 		}
 
@@ -28,7 +31,7 @@ namespace TSNet
 		public void stop()
 		{
 			for (int i = 0; i < lstAcceptor_.Count; ++i)
-				lstAcceptor_[i].stop();
+				lstAcceptor_[i].close();
 
 			LOG.close();
 			latchStop_.countdown();

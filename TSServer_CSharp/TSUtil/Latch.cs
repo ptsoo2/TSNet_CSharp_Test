@@ -2,7 +2,7 @@
 namespace TSUtil
 {
 	/// <summary>
-	/// counter 대기 용도
+	/// MT 환경에서 counter 기반 wait 용도
 	/// </summary>
 	public class Latch
 	{

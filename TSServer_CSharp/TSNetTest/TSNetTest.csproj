@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	<!--빌드 출력 경로에 버전을 포함하지 않는다. (ex) bin/Debug/net8.0 => bin/Debug)-->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TSNet\1_TSNet.csproj" />
+    <ProjectReference Include="..\TSServerCommon\2_TSServerCommon.csproj" />
     <ProjectReference Include="..\TSUtil\0_TSUtil.csproj" />
   </ItemGroup>
 

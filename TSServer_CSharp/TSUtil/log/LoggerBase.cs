@@ -1,42 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using extensions;
+using Microsoft.Extensions.Configuration;
 using Serilog;
-using Serilog.Context;
-using Serilog.Core;
 using Serilog.Events;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace TSUtil
 {
-	/// <summary>
-	/// 함수명, 줄번호, 파일명을 로그 메시지에 추가
-	/// </summary>
-	public static class SourceLocEnricher
-	{
-		private static string defaultPropertyName_ = "SourceLoc";
-		private static string defaultMessageTemplate_ = "{0}({1})";
-
-		public static ILogger enrich(ILogger logger, SourceLocation sourceLocation, string? propertyName = null, string? messageTemplate = null)
-		{
-			propertyName ??= defaultPropertyName_;
-			messageTemplate ??= defaultMessageTemplate_;
-
-			string propertyValue = string.Format(messageTemplate, sourceLocation.func_, sourceLocation.line_.ToString(), sourceLocation.file_);
-			return logger.ForContext(propertyName, propertyValue);
-		}
-	}
-
-	/// <summary>
-	/// SourceLocEnricher 를 사용하는 외부 인터페이스
-	/// </summary>
-	public static class LoggerExtensions
-	{
-		public static ILogger attachSourceLocation(this ILogger logger, SourceLocation sourceLocation, string? propertyName = null, string? messageTemplate = null)
-		{
-			return SourceLocEnricher.enrich(logger, sourceLocation, propertyName, messageTemplate);
-		}
-	}
-
 	/// <summary>
 	/// 로거 전신
 	/// </summary>
@@ -49,8 +19,16 @@ namespace TSUtil
 		{
 			_throwIfInitialized();
 
-			var config = new ConfigurationBuilder().AddJsonFile(configPath).Build();
-			logger_ = new LoggerConfiguration().ReadFrom.Configuration(config).CreateLogger();
+			IConfigurationRoot configRoot = new ConfigurationBuilder()
+				.AddJsonStream(File.Open(configPath, FileMode.Open))
+				.Build();
+
+			// ptsoo todo - 처음 로그 파일 기록시에만 적용되므로 rolling 시에도 적용하는 방법을 알아야 한다.
+			_replaceFilePath(configRoot);
+
+			logger_ = new LoggerConfiguration()
+				.ReadFrom.Configuration(configRoot)
+				.CreateLogger();
 		}
 
 		public static void close()
@@ -63,10 +41,20 @@ namespace TSUtil
 			(logger_ as IDisposable)?.Dispose();
 		}
 
+		protected static void _replaceFilePath(IConfigurationRoot root)
+		{
+			root.foreachByPattern("^Serilog:WriteTo.*Args:path$", RegexOptions.IgnoreCase,
+				(key, value) =>
+				{
+					root[key] = value?.Replace("{timestamp}", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+				}
+			);
+		}
+
 		protected static void _write(LogEventLevel logEventLevel, SourceLocation sourceLocation, string messageTemplate)
 		{
 			ArgumentNullException.ThrowIfNull(logger_);
-			logger_.attachSourceLocation(sourceLocation).Write(logEventLevel, messageTemplate);
+			SourceLocEnricher.enrich(logger_, sourceLocation).Write(logEventLevel, messageTemplate);
 		}
 
 		protected static void _throwIfInitialized()
@@ -78,11 +66,7 @@ namespace TSUtil
 
 	/// <summary>
 	/// 실제 로깅시 사용하는 부분
-	/// 기본 제공되는 기능에 함수명, 줄 번호를 찍을 수 있는 기능이 없음. 관련 기능 참고하여 추가
-	/// https://github.com/serilog/serilog/wiki/Enrichment
-	/// https://stackoverflow.com/questions/77433621/how-to-log-the-classpath-methodname-and-linenumber-with-serilog-in-c-sharp
 	/// </summary>
-	/// <typeparam name="TTag"></typeparam>
 	public partial class CLoggerBase<TTag>
 	{
 		/// <summary>
@@ -121,7 +105,13 @@ namespace TSUtil
 		public static void FATAL(string messageTemplate, [CallerMemberName] string func = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
 			=> _write(LogEventLevel.Fatal, new SourceLocation(func, file, line), messageTemplate);
 	}
+}
 
+namespace TSUtil
+{
+	/// <summary>
+	/// 기본 Logger class
+	/// </summary>
 	public struct tagDefaultLogger { }
 	public class LOG : CLoggerBase<tagDefaultLogger> { }
 }
