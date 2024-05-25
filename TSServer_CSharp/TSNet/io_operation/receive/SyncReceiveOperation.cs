@@ -79,7 +79,7 @@ namespace TSNet
 
 			fnOnReceived_?.Invoke(size);
 
-			messageBuffer_.onWriteEnd((int)size);
+			messageBuffer_.onWriteEnd(size);
 
 			while (true)
 			{

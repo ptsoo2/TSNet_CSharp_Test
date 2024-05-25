@@ -6,7 +6,7 @@ using TSUtil;
 
 namespace TSNetTest
 {
-	internal partial class Application
+	internal partial class CApplication
 	{
 		public static void launchSubThread(int intervalMilliSec = 1000)
 		{
@@ -27,10 +27,7 @@ namespace TSNetTest
 				Task.Factory.StartNew(
 					() =>
 					{
-						ThreadUtil.setThreadName("monitor");
-
 						double peakCPUUsage = 0;
-
 						Stopwatch watch = new();
 						watch.Restart();
 
@@ -51,10 +48,10 @@ namespace TSNetTest
 								// Memory
 								{
 									string descMemoryUsage = $"""
-														PeakVirtual: {nowProcess_.PeakVirtualMemorySize64.BYTE_TO_GIGABYTE().ToString()}, 
-														PeakPaged: {nowProcess_.PeakPagedMemorySize64.BYTE_TO_MEGABYTE().ToString()}, 
-														PeakWorkingSet: {nowProcess_.PeakWorkingSet64.BYTE_TO_MEGABYTE().ToString()}, 
-														GC: {GC.GetTotalMemory(true).BYTE_TO_GIGABYTE().ToString()}
+														PeakVirtual: {nowProcess_.PeakVirtualMemorySize64.BYTE_TO_GIGABYTE().ToString()} gb,
+														PeakPaged: {nowProcess_.PeakPagedMemorySize64.BYTE_TO_MEGABYTE().ToString()} mb, 
+														PeakWorkingSet: {nowProcess_.PeakWorkingSet64.BYTE_TO_MEGABYTE().ToString()} mb, 
+														GC: {GC.GetTotalMemory(true).BYTE_TO_GIGABYTE().ToString()} gb
 														""";
 									LOG.INFO($"Perf Memory({descMemoryUsage.Replace(Environment.NewLine, "")})");
 								}
@@ -75,16 +72,13 @@ namespace TSNetTest
 		}
 	}
 
-	internal partial class Application
+	internal partial class CApplication
 	{
 		static Process nowProcess_ = Process.GetCurrentProcess();
 
 		static readonly CPerformanceMeasurer_MT acceptPerformanceMeasurer = new();
 		static readonly CPerformanceMeasurer_MT receivePerformanceMeasurer = new();
-	}
 
-	internal partial class Application
-	{
 		private static CSessionConfig sessionConfig_ = new CSessionConfig
 		{
 			socketOption_ = new CSocketOptionConfig
@@ -100,7 +94,10 @@ namespace TSNetTest
 			port_ = 30002,
 			backlog_ = 1024,
 		};
+	}
 
+	internal partial class CApplication
+	{
 		private static void _onReceived(int bytes)
 		{
 			receivePerformanceMeasurer.addCount((ulong)bytes);
@@ -159,8 +156,11 @@ namespace TSNetTest
 
 			CNetworkService.instance
 				.init()
-				.addAcceptor(acceptorConfig_, new fnOnAccepted_t(_onAccepted))
-				.launch();
+				.addAcceptor(acceptorConfig_, new fnOnAccepted_t(_onAccepted));
+
+			Minidump.init();
+
+			CNetworkService.instance.launch();
 		}
 
 		static void cleanup()

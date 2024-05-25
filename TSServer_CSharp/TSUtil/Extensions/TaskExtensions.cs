@@ -16,6 +16,7 @@
 			// https://forum.dotnetdev.kr/t/task-exception/5345/3
 			// 혹시나 감지 못한 throw 에 의해서 Task 가 종료되는 경우
 			// 최종적으로 발생한 Exception 이 있는지 확인한다.
+
 			task.ContinueWith(
 				(innerTask) =>
 				{
@@ -23,6 +24,9 @@
 					if (exception != null)
 					{
 						LOG.ERROR(exception.ToString());
+#if DEBUG
+						Minidump.install_self_mini_dump(false);
+#endif // DEBUG
 					}
 				}
 			);

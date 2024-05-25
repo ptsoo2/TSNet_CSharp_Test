@@ -23,8 +23,27 @@ namespace TSUtil
 				.AddJsonStream(File.Open(configPath, FileMode.Open))
 				.Build();
 
-			// ptsoo todo - 처음 로그 파일 기록시에만 적용되므로 rolling 시에도 적용하는 방법을 알아야 한다.
-			_replaceFilePath(configRoot);
+			configRoot.foreachByPattern(new CRegexMatchFilterEvent<KeyValuePair<string, string?>>(
+				"^Serilog:WriteTo.*Args:path$",
+				RegexOptions.IgnoreCase,
+				(iter) =>
+				{
+					string logFilePath = iter.Value!;
+					if (logFilePath == null)
+						return;
+
+					// 백업 처리
+					string directoryPath = Path.GetDirectoryName(logFilePath)!;
+					if (directoryPath != null)
+					{
+						string backupDirectoryPath = $"{directoryPath}/backup";
+						FileExtensions.moveFiles(directoryPath, backupDirectoryPath, true);
+					}
+
+					// 로그 파일명 변경 처리		// ptsoo todo - 처음 로그 파일 기록시에만 적용되므로 rolling 시에도 적용하는 방법을 알아야 한다.
+					configRoot[iter.Key] = logFilePath?.Replace("{timestamp}", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+				}
+			));
 
 			logger_ = new LoggerConfiguration()
 				.ReadFrom.Configuration(configRoot)
@@ -39,16 +58,6 @@ namespace TSUtil
 			// ref@ Serilog.Log.CloseAndFlush
 			// 내부적으로 Async 절차로 종료됨에 유의
 			(logger_ as IDisposable)?.Dispose();
-		}
-
-		protected static void _replaceFilePath(IConfigurationRoot root)
-		{
-			root.foreachByPattern("^Serilog:WriteTo.*Args:path$", RegexOptions.IgnoreCase,
-				(key, value) =>
-				{
-					root[key] = value?.Replace("{timestamp}", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
-				}
-			);
 		}
 
 		protected static void _write(LogEventLevel logEventLevel, SourceLocation sourceLocation, string messageTemplate)

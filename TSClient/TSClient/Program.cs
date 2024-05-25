@@ -59,7 +59,7 @@ namespace TSClient
 			while (true)
 			{
 				int SOCKET_COUNT = 1000;
-				int SEND_COUNT = 2000;
+				int SEND_COUNT = 2500;
 
 				List<Socket> lstSocket = new();
 				Test.Bench(() =>

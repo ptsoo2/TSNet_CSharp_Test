@@ -12,8 +12,8 @@ namespace TSNet
 		protected fnOnReceived_t? fnOnReceived_ { get; private set; }
 		public event fnOnReceived_t fnOnReceived
 		{
-			add => fnOnReceived_ += value;
-			remove => fnOnReceived_ -= value;
+			add { fnOnReceived_ += value; }
+			remove { fnOnReceived_ -= value; }
 		}
 
 		public CSocketReceiveOperationBase(Socket socket, int bufferSize)
