@@ -3,9 +3,6 @@
 namespace TSNet
 {
 	using CAcceptor = CAcceptor<CSocketTaskBasedAcceptOperation>;
-	// using CAcceptor = CAcceptor<CSocketSyncAcceptOperation>;
-	// using CAcceptor = CAcceptor<CSocketAPMBasedAcceptOperation>;
-	// using CAcceptor = CAcceptor<CSocketEventBasedAcceptOperation>;
 
 	public class CNetworkService : Singleton<CNetworkService>
 	{

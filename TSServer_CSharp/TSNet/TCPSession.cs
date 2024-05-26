@@ -38,11 +38,15 @@ namespace TSNet
 			// Operation close => Acceptor close 의 순서를 맞춰주기 위해 선 등록 해준다.
 			// Cancel 콜 시점에 등록의 역순으로 호출된다.
 			receiveOperation_ = new CSocketTaskBasedReceiveOperation(socket_!, bufferSize);
-			// receiveOperation_ = new CSocketSyncReceiveOperation(socket_!, bufferSize);
 			receiveOperation_.cancellationToken().Register(new Action(this._close));
 
 			// recv 시작
 			receiveOperation_.run();
+		}
+
+		public void close()
+		{
+			receiveOperation_?.close();
 		}
 
 		protected void _close()

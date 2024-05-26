@@ -7,8 +7,6 @@ namespace TSNet
 	public class CAcceptor<TAcceptOperation>
 		where TAcceptOperation : CSocketAcceptOperationBase
 	{
-		private CSharedCounter_Bool isClosed_ { get; } = new(false);
-
 		protected CAcceptorConfig config_ { get; }
 		protected Socket socket_ { get; private set; }
 		protected CSocketAcceptOperationBase acceptOperation_;

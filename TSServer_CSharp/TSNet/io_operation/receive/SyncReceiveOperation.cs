@@ -108,7 +108,6 @@ namespace TSNet
 				{
 					TestMessage message = new TestMessage();
 					message.readFrom(ref readableBuffer);
-					// LOG.DEBUG($"message: `{message.message ?? "unknown"}`, size: {readableBuffer.Length.ToString()}");
 				}
 
 				messageBuffer_.onReadEnd(readableBuffer.Length);

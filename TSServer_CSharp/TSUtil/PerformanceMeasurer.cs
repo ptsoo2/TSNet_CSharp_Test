@@ -33,17 +33,17 @@ namespace TSUtil
 	public class CPerformanceMeasurer<T>
 		where T : unmanaged, IThreadType<T>
 	{
-		protected ICounter<ulong> nowCounter_ = CounterFactory.create<ulong, T>()!;
-		protected ICounter<ulong> totalCounter_ = CounterFactory.create<ulong, T>()!;
+		protected INumberWrapper<ulong> nowCounter_ = CNumberWrapperFactory.create<ulong, T>()!;
+		protected INumberWrapper<ulong> totalCounter_ = CNumberWrapperFactory.create<ulong, T>()!;
 
 		/// <summary>
 		/// not thread safety
 		/// </summary>
-		protected ICounter<ulong> estimatedMaxCounter_ = CounterFactory.create<ulong, T>()!;
+		protected INumberWrapper<ulong> estimatedMaxCounter_ = CNumberWrapperFactory.create<ulong, T>()!;
 
 		protected Stopwatch watch_ = new();
 		protected long totalElapsedMilliseconds_ = 0;
-		protected ICounter<ulong> captureCounter_ = CounterFactory.create<ulong, ThreadType.Single>()!;
+		protected INumberWrapper<ulong> captureCounter_ = CNumberWrapperFactory.create<ulong, T>()!;
 
 		/// <summary>
 		/// thread safety.

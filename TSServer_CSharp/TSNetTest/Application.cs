@@ -85,7 +85,7 @@ namespace TSNetTest
 			{
 				lingerOption_ = new LingerOption(true, 0),
 			},
-			receiveBufferSize_ = 1 << 16,
+			receiveBufferSize_ = 1 << 3,
 		};
 
 		private static CAcceptorConfig acceptorConfig_ = new CAcceptorConfig
@@ -169,7 +169,7 @@ namespace TSNetTest
 		}
 
 #pragma warning disable CS0162 // 테스트 용도
-		static unsafe void Main(string[] args)
+		static void Main(string[] args)
 		{
 			startup();
 			cleanup();

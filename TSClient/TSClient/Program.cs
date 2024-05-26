@@ -1,4 +1,4 @@
-﻿// #define _ACCEPT_TEST_
+﻿#define _ACCEPT_TEST_
 
 using System.Net.Sockets;
 using TSNet;
@@ -54,7 +54,7 @@ namespace TSClient
 				Thread.Sleep(1);
 			}
 #else // _ACCEPT_TEST_
-			CSharedCounter_UInt64 sharedCounter = new();
+			Atomic_UInt64_t sharedCounter = new();
 
 			while (true)
 			{
@@ -139,7 +139,7 @@ namespace TSClient
 					);
 				}
 #endif //_ACCEPT_TEST_
-			}
 		}
 	}
 }
+
